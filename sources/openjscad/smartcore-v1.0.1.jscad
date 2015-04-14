@@ -1,4 +1,4 @@
-/**********
+/********** -*- mode: js; electric-indent-mode: 1; indent-tabs-mode: nil -*-
 
 Smartcore : L'empileuse
 
@@ -54,36 +54,43 @@ var output; // show hide objects  from output choosen in the parameters.
 
 function getParameterDefinitions() {
     return [
-        { name: '_version', caption: 'Version', type: 'text', initial: "1.0.8 mar 12 2015" },
-        { 
-            name: '_output', 
-            caption: 'What to show :', 
-            type: 'choice', 
-            values: [0,1,2,3,4,-1,5,6,7,8,9,10,11,12], 
-            initial: 1, 
-            captions: ["-----", //0
-                       "All printer assembly", //1
-                       "printed parts plate", //2
-                       "parts only", //3
-                       "Walls and rods sizes", //4
-                       "-----", // nope
-                       "motor xy", //5
-                       "bearings xy", //6
-                       "slide y", //7
-                       "z top", //8
-                       "z bottom", //9
-                       "z slide", //10
-                       "head", //11
-                       "extruder" //12
-                      ]
+        { name: '_version', caption: 'Version', type: 'text', initial: "1.0.9 mar 13 2015" },
+        { name: '_output', 
+          caption: 'What to show :', 
+          type: 'choice', 
+          values: [0,1,100,2,3,4,-1,5,6,7,8,9,10,11,12], 
+          initial: 1, 
+          captions: ["-----", //0
+                     "All printer assembly", //1
+                     "Assembly no walls",    //100
+                     "printed parts plate",  //2
+                     "parts only",           //3
+                     "Walls and rods sizes", //4
+                     "-----",                // nope
+                     "motor xy",             //5
+                     "bearings xy",          //6
+                     "slide y",              //7
+                     "z top",                //8
+                     "z bottom",             //9
+                     "z slide",              //10
+                     "head",                 //11
+                     "extruder"              //12
+                    ]
         },
-        { name: '_globalResolution', caption: 'output resolution (16, 24, 32)', type: 'int', initial: 8 },   
-        
+        { name: '_globalResolution',
+          caption: 'output resolution (16, 24, 32)',
+          type: 'int',
+          initial: 8
+        },   
         { name: '_printableWidth', caption: 'Print width:', type: 'int', initial: 200 },
         { name: '_printableHeight', caption: 'Print height :', type: 'int', initial: 150 },
         { name: '_printableDepth', caption: 'Print depth :', type: 'int', initial: 200 },
         { name: '_wallThickness', caption: 'Box wood thickness:', type: 'int', initial: 10 },
-        { name: '_XYrodsDiam', caption: 'X Y Rods diameter (6 or 8 ):', type: 'int', initial: 6},
+        { name: '_XYrodsDiam',
+          caption: 'X Y Rods diameter (6 or 8 ):',
+          type: 'int',
+          initial: 6
+        },
         { name: '_ZrodsDiam', caption: 'Z Rods diameter (6,8,10,12):', type: 'int', initial: 8},
         { name: '_ZrodsOption',
           caption: 'Z threaded rods:',
@@ -92,12 +99,12 @@ function getParameterDefinitions() {
           values: [0,1,2],
           captions: ["false", "true", "true-2sides"]
         },
-        {name: '_nemaXYZ', 
-         type: 'choice',
-         caption: 'Stepper motors type',
-         values: [35, 42],
-         captions: ["nema14","nema17"], 
-         initial: 42
+        { name: '_nemaXYZ', 
+          type: 'choice',
+          caption: 'Stepper motors type',
+          values: [35, 42],
+          captions: ["nema14","nema17"], 
+          initial: 42
         }
         /*
           {name: 'extrusionType', 
@@ -115,27 +122,41 @@ function getParameterDefinitions() {
 
 // -----------------  printed elements 
 
-
-
 function zTopBase(width, depth, height) {
     return difference(
         //main
-        cube({size:[width,depth,height],center:true}).translate([0,-1,0]),
+        cube({size: [width, depth, height], center: true})
+            .translate([0,-1,0]),
         // outside form left
-        cube({size:[13,depth,height],center:true}).translate([-width/2+6.5,-5,0]),
+        cube({size: [13, depth, height], center: true})
+            .translate([-width / 2 + 6.5, -5, 0]),
         // outside form right
-        cube({size:[13,depth,height],center:true}).translate([width/2-6.5,-5,0]),
+        cube({size: [13, depth, height], center: true})
+            .translate([width / 2 - 6.5, -5, 0]),
         //screw left
-        slottedHole(4,8,depth).rotateX(90).rotateY(90).translate([-(width)/2+4,20,0]),
+        slottedHole(4, 8, depth)
+            .rotateX(90)
+            .rotateY(90)
+            .translate([-width / 2 + 4, 20, 0]),
         //screw right
-        slottedHole(4,8,depth).rotateX(90).rotateY(90).translate([(width)/2-9,20,0]),
+        slottedHole(4, 8, depth)
+            .rotateX(90)
+            .rotateY(90)
+            .translate([width / 2 - 9, 20, 0]),
         // z rod left
-        cylinder({r:_ZrodsDiam/2,h:height,fn:_globalResolution}).translate([-_ZrodsWidth/2,depth/2-15,-height/2]),
+        cylinder({r: _ZrodsDiam / 2, h: height, fn: _globalResolution})
+            .translate([-_ZrodsWidth / 2, depth / 2 - 15, -height / 2]),
         //z rod right
-        cylinder({r:_ZrodsDiam/2,h:height,fn:_globalResolution}).translate([_ZrodsWidth/2,depth/2-15,-height/2]),
+        cylinder({r: _ZrodsDiam/2, h: height, fn: _globalResolution})
+            .translate([_ZrodsWidth / 2, depth / 2 - 15, -height / 2]),
         // chamfer
-        roundBoolean2(10,height,"bl").rotateX(90).rotateZ(-90).translate([-width/2+22,-depth/2+9,-height/2]),
-        roundBoolean2(10,height,"bl").rotateX(90).translate([width/2-22,-depth/2+9,-height/2])
+        roundBoolean2(10, height, "bl")
+            .rotateX(90)
+            .rotateZ(-90)
+            .translate([-width / 2 + 22, -depth / 2 + 9, -height / 2]),
+        roundBoolean2(10, height, "bl")
+            .rotateX(90)
+            .translate([width / 2 - 22, -depth / 2 + 9, -height / 2])
     );
 }
 
@@ -143,7 +164,7 @@ function zTop(){
     var width = _ZrodsWidth+_ZrodsDiam+(_rodsSupportThickness*2)+26;
     var height = 12;
     var depth = 24;
-    var insideWidth = 25;
+    var insideWidth = 28;
     /*
     var bearings=cube({size:0});
 
@@ -1393,7 +1414,7 @@ function makeplate(parts){
 
 // -----------------------  start here 
 
-function main(params){
+function main(params) {
 
     // -------- sandbox ------- 
     //return _walls();
@@ -1469,10 +1490,10 @@ function main(params){
         
         //res.push(fakeJhead().translate([headoffset+23,XaxisOffset-12,_globalHeight-38]).setColor(0.2,0.2,0.2));
         break;
+    case 100:
     case 1:
-        
         res = [
-            _walls(),
+            output == 100 ? cube ([0,0,0]) : _walls(),
             _rods(),
             
             //nema left
@@ -1528,7 +1549,7 @@ function main(params){
         }
         
         //bowden
-        if(_extrusionType==1){
+        if(_extrusionType == 1){
             //res.push(JheadAttach().translate([headoffset-12,XaxisOffset-17,_globalHeight+6]));
             res.push(HeadSupportJhead().rotateZ(180).translate([headoffset+44,XaxisOffset,_globalHeight-14]));
             res.push(fakeJhead().translate([headoffset+23,XaxisOffset-15,_globalHeight-32]).setColor(0.2,0.2,0.2));
@@ -1542,7 +1563,7 @@ function main(params){
 
         }
         // direct
-        if(_extrusionType==0){
+        if(_extrusionType == 0) {
             res.push(InductiveSensorSupport().translate([headoffset+6,-(_XYlmDiam/2+(_rodsSupportThickness*2))+XaxisOffset+57,_globalHeight-28]));
             // nema extruder
             res.push(_nema().rotateX(-90).translate([headoffset+2,XaxisOffset,_globalHeight+50]));
@@ -1550,9 +1571,7 @@ function main(params){
         }
         break;
     case 2:
-
         res = [
-
             motorXY().rotateX(-90),
             motorXY().mirroredX().rotateX(-90),
 
@@ -1572,7 +1591,7 @@ function main(params){
         ];
         //bowden
         
-        if(_extrusionType==1){
+        if(_extrusionType == 1){
             res.push(InductiveSensorSupport().rotateX(180));
             res.push(HeadSupportJhead().rotateX(90));
             // nema extruder
@@ -1581,7 +1600,7 @@ function main(params){
 
         }
         // direct
-        if(_extrusionType==0){
+        if(_extrusionType == 0){
             res.push(InductiveSensorSupport());
             // nema extruder
             res.push(extruder(_extrusionType,0));
@@ -1644,7 +1663,7 @@ function main(params){
         res = [slideY()];
         break;
     case 8:
-        res = [zTop().translate([0,0,80]),slideZ2().translate([-_ZrodsWidth/2,-2,20]),zBottom()];
+        res = [zTop()];
         break;
     case 9:
         res = zBottom();
