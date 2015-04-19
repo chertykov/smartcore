@@ -90,8 +90,8 @@ var nema14 = {
     cap_thickness: 0.0,     // Motor cap thickness
     cap_chamfer: 2.5,       // Motor cap chamfer
 
-    shaft_len: 18.0,        // Shaft length
-    shaft_radius: 2.5,      // Shaft radius
+    shaft_h: 18.0,        // Shaft length
+    shaft_r: 2.5,      // Shaft radius
 
     ring_r: 22.0 / 2,       // Ring radius
     ring_h: 1.9,            // Ring height
@@ -103,19 +103,19 @@ var nema14 = {
 
 // Nema 17 x 39 parameters.
 var nema17 = {
-    len: 39.0,              // Motor length
-    side_size: 42.2,        // Motor width
-    body_chamfer: 5.0,      // Motor chamfer
+    len: 39.0,                  // Motor length
+    side_size: 42.2,            // Motor width
+    body_chamfer: 5.0,          // Motor chamfer
     
-    cap_len: 8.0,           // Motor cap length
-    cap_thickness: 0.0,     // Motor cap thickness
-    cap_chamfer: 2.5,       // Motor cap chamfer
+    cap_len: 8.0,               // Motor cap length
+    cap_thickness: 0.0,         // Motor cap thickness
+    cap_chamfer: 2.5,           // Motor cap chamfer
 
-    shaft_len: 22.0,        // Shaft length
-    shaft_radius: 2.5,      // Shaft radius
+    shaft_h: 22.0,              // Shaft length
+    shaft_r: 2.5,               // Shaft radius
 
-    ring_r: 22.0 / 2,       // Ring radius
-    ring_h: 1.9,            // Ring height
+    ring_r: 22.0 / 2,           // Ring radius
+    ring_h: 1.9,                // Ring height
 
     mount_dist: 31.04 / 2,      // Mounting hole offset
     mounting_holes_radius: 1.5, // Mounting hole radius
@@ -823,14 +823,21 @@ var motor_mount = {
             cube({size: [_nemaXYZ, _nemaXYZ, _nemaXYZ]})
                 .translate([0, 0, -_nemaXYZ]),
             // Screw head traps.
-            cylinder ({r: Size.m3.head_r, h: 10})
+            cylinder ({r: Size.m3.head_r, h: 10, fn: _globalResolution})
                 .translate ([nema_screw_offset,
                              nema_screw_offset,
                              height - Size.m3.head_h]),
-            cylinder ({r: Size.m3.head_r, h: 10})
+            cylinder ({r: Size.m3.head_r, h: 10, fn: _globalResolution})
                 .translate ([nema_screw_offset,
                              nema.side_size - nema_screw_offset,
-                             height - Size.m3.head_h])
+                             height - Size.m3.head_h]),
+            // Corner groove
+            cylinder ({d: 0.6, h: nema.side_size + 2, fn: 16})
+                .rotateX(-90)
+                .translate ([-0.2, -1, this.wall_trap_h - 0.2]),
+            cylinder ({d: 0.6, h: nema.side_size + 2, fn: 16})
+                .rotateX(-90)
+                .translate ([-_wallThickness + 0.2, -1, this.wall_trap_h - 0.2])
         );
     }
 };
@@ -968,6 +975,7 @@ function extruder(bowden,part){
     )
 
 }
+
 function extruderPart(part,X,Y,Z){
     // lower part only
     if(part==0){
@@ -1021,6 +1029,7 @@ function extruderOut(bowden,jheadOffsetX,Y,Z){
     }
 
 }
+
 function extruderFilament(bowden,jheadOffsetX,Y,Z){
     if(bowden==0){
         return union(
@@ -1193,6 +1202,7 @@ function _rodsZ() {
         }
     }
 }
+
 function _rods() {
     return union(_rodsXY(),_rodsZ());           
 }
