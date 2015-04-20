@@ -1,5 +1,5 @@
+/* -*- mode: js; electric-indent-mode: 1; indent-tabs-mode: nil -*- */
 /**********
- -*- mode: js; electric-indent-mode: 1; indent-tabs-mode: nil -*-
 
            Smartcore : L'empileuse
 
@@ -75,9 +75,30 @@ var Size = {
         head_h: 4
     },
     rod_xy_wall: 3,             // wall thickness of Y rod support on motor mount
-    rod_y_wall_dist: 20         // distance from wall to Y rod axis
+    rod_y_wall_dist: 20,        // distance from wall to Y rod axis
+    rod_y_nema_overlap: 3,      // how deep Y rods lies in support and lies on motors
 };
 
+
+
+function toothed_pulley () {
+    var ro = 9.8 / 2;
+    var belt_ro = 11.2 / 2.0;
+    mesh = function (base) {
+        var mesh = union (
+            cylinder ({r: 13 / 2, h: 6}),
+            cylinder ({r: this.ro, h: 7})
+                .translate ([0, 0, 6]),
+            cylinder ({r: 13 / 2, h: 1})
+                .translate ([0, 0, 6 + 7])
+        );
+        if (base == "belt")
+            mesh = mesh.translate ([0, 0, 6]);
+        return mesh;
+    };
+}
+
+var toothed_pulley_16 = toothed_pulley ();
 
 // Nema 17 x 39 parameters.
 // XXX TODO nema 14
@@ -90,15 +111,19 @@ var nema14 = {
     cap_thickness: 0.0,     // Motor cap thickness
     cap_chamfer: 2.5,       // Motor cap chamfer
 
-    shaft_len: 18.0,        // Shaft length
-    shaft_radius: 2.5,      // Shaft radius
+    shaft_h: 18.0,              // Shaft length
+    shaft_r: 2.5,               // Shaft radius
 
     ring_r: 22.0 / 2,       // Ring radius
     ring_h: 1.9,            // Ring height
 
     mount_dist: 26.0 / 2,      // Mounting hole offset
     mounting_holes_radius: 1.5, // Mounting hole radius
-    mounting_holes_depth: 3.5   // Mounting hole depth
+    mounting_holes_depth: 3.5,  // Mounting hole depth
+
+    mesh: function () {
+        return _nema ("base mount");
+    }
 };
 
 // Nema 17 x 39 parameters.
@@ -111,15 +136,19 @@ var nema17 = {
     cap_thickness: 0.0,     // Motor cap thickness
     cap_chamfer: 2.5,       // Motor cap chamfer
 
-    shaft_len: 22.0,        // Shaft length
-    shaft_radius: 2.5,      // Shaft radius
+    shaft_h: 22.0,              // Shaft length
+    shaft_r: 2.5,               // Shaft radius
 
     ring_r: 22.0 / 2,       // Ring radius
     ring_h: 1.9,            // Ring height
 
     mount_dist: 31.04 / 2,      // Mounting hole offset
     mounting_holes_radius: 1.5, // Mounting hole radius
-    mounting_holes_depth: 4.5   // Mounting hole depth
+    mounting_holes_depth: 4.5,  // Mounting hole depth
+
+    mesh: function () {
+        return _nema ("base mount");
+    }
 };
 
 
@@ -132,23 +161,24 @@ function getParameterDefinitions() {
             name: '_output', 
             caption: 'What to show :', 
             type: 'choice', 
-            values: [0,1,101,2,3,4,-1,5,6,7,8,9,10,11,12], 
-            initial: 0,
-            captions: ["-----", //0
-                       "All printer assembly", //1
-                       "Assembly, no walls", //101
-                       "printed parts plate", //2
-                       "parts only", //3
-                       "Walls and rods sizes", //4
-                       "-----", // nope
-                       "motor xy", //5
-                       "bearings xy", //6
-                       "slide y", //7
-                       "z top", //8
-                       "z bottom", //9
-                       "z slide", //10
-                       "head", //11
-                       "extruder" //12
+            values: [0,1,101,102,2,3,4,-1,5,6,7,8,9,10,11,12], 
+            initial: 102,
+            captions: ["-----",                // 0
+                       "All printer assembly", // 1
+                       "Assembly, no walls",   // 101
+                       "Gantry assembly",      // 102
+                       "printed parts plate",  // 2
+                       "parts only",           // 3
+                       "Walls and rods sizes", // 4
+                       "-----",                // nope
+                       "motor xy",             // 5
+                       "bearings xy",          // 6
+                       "slide y",              // 7
+                       "z top",                // 8
+                       "z bottom",             // 9
+                       "z slide",              // 10
+                       "head",                 // 11
+                       "extruder"              // 12
                       ]
         },
         { name: '_globalResolution', caption: 'output resolution (16, 24, 32)', type: 'int', initial: 8 },   
@@ -187,25 +217,16 @@ function getParameterDefinitions() {
 
 
 
-function zTopBase(width, depth, height) {
+function zTopBase (width, depth, height) {
     return difference(
         //main
-        cube({
-            size: [width, depth, height],
-            center: true
-        })
+        cube({size: [width, depth, height], center: true})
             .translate([0, -1, 0]),
         // outside form left
-        cube({
-            size: [13, depth, height],
-            center: true
-        })
+        cube({size: [13, depth, height], center: true})
             .translate([-width / 2 + 6.5, -5, 0]),
         // outside form right
-        cube({
-            size: [13, depth, height],
-            center: true
-        })
+        cube({size: [13, depth, height], center: true})
             .translate([width / 2 - 6.5, -5, 0]),
         //screw left
         slottedHole(4, 8, depth)
@@ -218,18 +239,10 @@ function zTopBase(width, depth, height) {
             .rotateY(90)
             .translate([(width) / 2 - 9, 20, 0]),
         // z rod left
-        cylinder({
-            r: _ZrodsDiam / 2,
-            h: height,
-            fn: _globalResolution
-        })
+        cylinder({r: _ZrodsDiam / 2, h: height, fn: _globalResolution})
             .translate([-_ZrodsWidth / 2, depth / 2 - 15, -height / 2]),
         //z rod right
-        cylinder({
-            r: _ZrodsDiam / 2,
-            h: height,
-            fn: _globalResolution
-        })
+        cylinder({r: _ZrodsDiam / 2, h: height, fn: _globalResolution})
             .translate([_ZrodsWidth / 2, depth / 2 - 15, -height / 2]),
         // chamfer
         roundBoolean2(10, height, "bl")
@@ -252,39 +265,37 @@ function zTop() {
     var height = 12;
     var depth = 24;
     var insideWidth = 28;
-    /* var bearings=cube({size:0});
 
-       if(output==1){
-       bearings = union(
-       bearing608z().rotateX(90).translate([3,-2,0]).setColor(0.4,0.4,0.4)
-       );
-       }*/
-    
-    if (_ZrodsOption>0) {
+    if (_ZrodsOption > 0) {
         return union(
             difference(
-                zTopBase(width, depth, height),
+                zTopBase (width, depth, height),
                 // bearing hole
                 union(
                     bearing608z(),
                     cylinder({r:12/2, h:height*4,fn: _globalResolution}).translate([0,0,-8])
-                ).translate([0,-12,-1])
-                
+                ).translate([0, -12, -1])
             )
         );
     } else {
         return union(
             difference(
-                zTopBase(width, depth, height),
+                zTopBase (width, depth, height),
                 // inside form
                 difference(
-                    cube({size:[insideWidth,8,height],center:true}).translate([3,-5.5,0]),
-                    cylinder({r:5,h:0.5,fn:_globalResolution}).rotateX(-90).translate([3,-9.5,0]),
-                    cylinder({r:5,h:0.5,fn:_globalResolution}).rotateX(-90).translate([3,-2,0])
+                    cube({size: [insideWidth, 8, height], center: true})
+                        .translate([3,-5.5,0]),
+                    cylinder ({r: 5, h: 0.5, fn: _globalResolution})
+                        .rotateX (-90)
+                        .translate ([3, -9.5, 0]),
+                    cylinder({r: 5, h: 0.5, fn: _globalResolution})
+                        .rotateX(-90)
+                        .translate([3, -2, 0])
                 ),
                 // bearing hole
-                cylinder({r:4,h:depth,fn:_globalResolution}).rotateX(-90).translate([3,-depth/2-4,0])
-                
+                cylinder({r: 4, h: depth, fn: _globalResolution})
+                    .rotateX(-90)
+                    .translate([3, -depth / 2 - 4, 0])
             )
         );
     }
@@ -527,7 +538,7 @@ function extraSupportBed(){
     );
 }
 
-function slideY(side){
+function slideY (side){
     var mesh;
     
     var Y = 20;
@@ -538,14 +549,13 @@ function slideY(side){
     var X = 40;
     var xrodOffsetZ = 18;
     mesh = difference(
-        
         union(
             difference(
                 //main
-                cube({size:[X,Y,Z]}).translate([15,0,0]),
+                cube({size: [X, Y, Z]}).translate([15, 0, 0]),
                 // support bearings
-                cube({size:[X,Y,8]}).translate([6.5,0,bearingsOffsetZ]),
-                cube({size:[X,Y,8]}).translate([6.5,0,bearingsOffsetZ+11])
+                cube({size: [X, Y, 8]}).translate([6.5, 0, bearingsOffsetZ]),
+                cube({size: [X, Y, 8]}).translate([6.5, 0, bearingsOffsetZ + 11])
             ),
             // round bearings supports in middle
             cylinder({r:5,h:0.5,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,bearingsOffsetZ]),
@@ -600,16 +610,14 @@ function slideY(side){
     if(output==0){
         mesh = union(
             mesh,
-            bearing608z().translate([bearingHoleOffsetX,Y/2,15.5]),
-            bearing608z().translate([bearingHoleOffsetX,Y/2,26.5])
+            bearing608z().translate([bearingHoleOffsetX, Y / 2, 15.5]),
+            bearing608z().translate([bearingHoleOffsetX, Y / 2, 26.5])
         );
     }
 
     return mesh;
-
-
-
 }
+
 
 function headLeft(){
     var mesh;
@@ -839,6 +847,8 @@ function motorXY () {
     return motor_mount.mesh ();
 }
 
+
+// 
 function bearingsXY(){
     var mesh;
     
@@ -847,21 +857,25 @@ function bearingsXY(){
     var bearingsOffsetZ = 10;
     var bearingsOffsetX = 10+_wallThickness;
     var bearingHoleOffsetX = bearingsOffsetX+13;
-    var X = 22+_wallThickness;
-    mesh = difference(
-        
-        union(
-            difference(
+    var X = 22 + _wallThickness;
+    mesh = difference (
+        union (
+            difference (
                 //main
-                union(
-                    cube({size:[X,Y,Z]}),
+                union (
+                    cube ({size: [X, Y, Z]}),
                     // round extremity - half cylinder
-                    difference(
-                        cylinder({r:Y/2,h:Z,fn:_globalResolution}).translate([X,Y/2,0]),
-                        cube({size:[Y,Y,Z]}).translate([X-Y,0,0])
+                    difference (
+                        cylinder ({r: Y / 2, h: Z, fn:_globalResolution})
+                            .translate([X,Y/2,0]),
+                        cube ({size: [Y, Y, Z]})
+                            .translate ([X - Y, 0, 0])
                     ),
                     // Y rod hole xtra
-                    cylinder({r:_XYrodsDiam,h:12,fn:_globalResolution}).rotateX(-90).rotateZ(90).translate([20+_wallThickness,-8,1]),
+                    cylinder({r: _XYrodsDiam, h:12, fn:_globalResolution})
+                        .rotateX(-90)
+                        .rotateZ(90)
+                        .translate([20 + _wallThickness, -8, 1]),
                     cube({size:[12,10,_XYrodsDiam+1]}).translate([8+_wallThickness,-8,0]),
                     cube({size:[12,15,5]}).rotateX(20).translate([8+_wallThickness,-6,2]),
                     cube({size:[12,7,5]}).rotateX(25).translate([8+_wallThickness,-5,-3])
@@ -1140,18 +1154,54 @@ function _rodsXY() {
     var offsetFromTopX = -5;
     return union(
         // rod X top
-        cylinder({r:_XYrodsDiam/2,h:XrodLength,fn:_globalResolution}).rotateY(90).translate([-_globalWidth/2+55,XaxisOffset+10,_globalHeight-offsetFromTopX]).setColor(0.3,0.3,0.3),
+        cylinder ({r: _XYrodsDiam/2, h: XrodLength, fn: _globalResolution})
+            .rotateY(90)
+            .translate([-_globalWidth / 2 + 55, XaxisOffset + 10,
+                        _globalHeight - offsetFromTopX])
+            .setColor(0.3,0.3,0.3),
         // rod x top bearing
-        cylinder({r:_XYlmDiam/2,h:50,fn:_globalResolution}).rotateY(90).translate([headoffset,XaxisOffset+10,_globalHeight-offsetFromTopX]).setColor(0.6,0.6,0.6),
+        cylinder ({r: _XYlmDiam / 2, h: 50, fn: _globalResolution})
+            .rotateY(90)
+            .translate([headoffset, XaxisOffset + 10, _globalHeight - offsetFromTopX])
+            .setColor(0.6,0.6,0.6),
         // rod x bottom
-        cylinder({r:_XYrodsDiam/2,h:XrodLength,fn:_globalResolution}).rotateY(90).translate([-_globalWidth/2+55,XaxisOffset+10,_globalHeight-offsetFromTopX-18]).setColor(0.3,0.3,0.3),
+        cylinder ({r: _XYrodsDiam / 2, h: XrodLength, fn: _globalResolution})
+            .rotateY(90)
+            .translate([-_globalWidth / 2 + 55,
+                        XaxisOffset + 10,
+                        _globalHeight - offsetFromTopX - 18])
+            .setColor(0.3,0.3,0.3)
+    );
+}
+
+// Draw Y rods.
+function rods_y () {
+    var overlap = Size.rod_y_nema_overlap;
+    return union (
         // rod y left
-        cylinder({r:_XYrodsDiam/2,h:YrodLength,fn:_globalResolution}).rotateX(90).translate([-_globalWidth/2+20,_globalDepth/2-10,_globalHeight-offsetFromTopY]).setColor(0.3,0.3,0.3),
-        // rod y left bearing
-        cylinder({r:_XYlmDiam/2,h:50,fn:_globalResolution}).rotateX(90).translate([-_globalWidth/2+20,90,_globalHeight-offsetFromTopY]).setColor(0.6,0.6,0.6),
+        cylinder({r: _XYrodsDiam / 2, h: YrodLength})
+            .rotateX(90)
+            .translate([-_globalWidth / 2 + Size.rod_y_wall_dist,
+                        _globalDepth / 2 - nema.side_size / 2 + overlap,
+                        0])
+            .setColor(0.3,0.3,0.3),
         // rod y right
-        cylinder({r:_XYrodsDiam/2,h:YrodLength,fn:_globalResolution}).rotateX(90).translate([_globalWidth/2-20,_globalDepth/2-10,_globalHeight-offsetFromTopY]).setColor(0.3,0.3,0.3)
-    );    
+        cylinder({r: _XYrodsDiam / 2, h: YrodLength})
+            .rotateX (90)
+            .translate ([_globalWidth / 2 - Size.rod_y_wall_dist,
+                         _globalDepth / 2 - nema.side_size / 2 + overlap,
+                         0])
+            .setColor(0.3,0.3,0.3)
+    ).translate ([0, 0, _XYrodsDiam / 2]);
+/*
+        // rod y left bearing
+        cylinder ({r: _XYlmDiam / 2, h:50})
+            .rotateX (90)
+            .translate ([-_globalWidth / 2 + 20,
+                         90,
+                         0])
+            .setColor(0.6,0.6,0.6),
+*/
 }
 
 function _rodsZ() {  
@@ -1213,14 +1263,17 @@ function rodsLengthText(){
 
 }
 
-function _nema() {
-    return union (
-        cube ({size: nema.side_size}).setColor(0.3, 0.3, 1.0),
-        cylinder ({r: nema.ring_r, h: nema.ring_h, fn: _globalResolution})
-            .translate ([nema.side_size / 2, nema.side_size / 2, nema.side_size]),
-        cylinder ({r: nema.shaft_r, h: nema.shaft_h, fn: _globalResolution})
-            .translate ([nema.side_size / 2, nema.side_size / 2, nema.side_size + nema.ring_h])
+function _nema(base) {
+    var mesh = union (
+        cube ({size: [nema.side_size, nema.side_size, nema.len]}).setColor(0.3, 0.3, 1.0),
+        cylinder ({r: nema.ring_r, h: nema.ring_h})
+            .translate ([nema.side_size / 2, nema.side_size / 2, nema.len]),
+        cylinder ({r: nema.shaft_r, h: nema.shaft_h})
+            .translate ([nema.side_size / 2, nema.side_size / 2, nema.len + nema.ring_h])
     );
+    if (base && base == "base mount")
+        mesh = mesh.translate ([-nema.side_size / 2, -nema.side_size / 2, -nema.len]);
+    return mesh;
 }
 
 function _bed(){
@@ -1573,7 +1626,9 @@ function main(params) {
     if(_ZrodsDiam==10){ _ZlmDiam = 19;}
     if(_ZrodsDiam==12){ _ZlmDiam = 21;}
 
+    Size.toothed_pulley = toothed_pulley (); // XXX TODO add 20 toothed pulley
 
+    
     _globalDepth = _printableDepth + 110; // = motor support depth + bearings depth + head depth /2
     _globalWidth = _printableWidth + 165; // = motor uspport width + bearings width + head width /2
     _globalHeight = _printableHeight + 140; // bottom = 40mm head = 40 mm + extra loose.
@@ -1599,26 +1654,7 @@ function main(params) {
 
     switch(output){
     case 0:
-        // connections
-        /*var bed = _bed().translate([-_printableWidth/2,-_printableDepth/2+35,_globalHeight/2+10]); 
-          var clipGlassBackleft = clipGlassBack();
-          var clipGlassBackright = clipGlassBack();
-          var clipGlassFrontLeft = clipGlassFront();
-          var clipGlassFrontRight = clipGlassFront();
-          clipGlassBackleft = clipGlassBackleft.connectTo(clipGlassBackleft.properties.connect1,bed.properties.clipbackleft,false,0);
-          clipGlassBackright = clipGlassBackright.connectTo(clipGlassBackright.properties.connect1,bed.properties.clipbackright,true,0);
-          clipGlassFrontLeft = clipGlassFrontLeft.connectTo(clipGlassFrontLeft.properties.connect1,bed.properties.clipfrontleft,false,0);
-          clipGlassFrontRight = clipGlassFrontRight.connectTo(clipGlassFrontRight.properties.connect1,bed.properties.clipfrontright,true,0);
-        */
-        res = [  _nema().translate([-_globalWidth/2,-_globalDepth/2,_globalHeight-_nemaXYZ-20]),
-                 motorXY().translate([-_globalWidth/2,-_globalDepth/2,_globalHeight-20]),
-                 slideY().translate([-_globalWidth/2+6,XaxisOffset,_globalHeight-22]),
-                 _rods(),
-                 bearingsXY().rotateZ(-90).translate([-_globalWidth/2+_wallThickness+18,_globalDepth/2+_wallThickness+5,_globalHeight-17])];
-        //res.push(JheadAttach().translate([headoffset-13,XaxisOffset-12,_globalHeight]));
-        
-        //res.push(fakeJhead().translate([headoffset+23,XaxisOffset-12,_globalHeight-38]).setColor(0.2,0.2,0.2));
-        res = [_axis ().translate ([-40, -40, 0]), motorXY ()];
+        res = [_axis ().translate ([-40, -40, 0]), slideY ()];
         break;
 
     case 1:
@@ -1703,6 +1739,47 @@ function main(params) {
         }
         break;
 
+    case 102:
+        res = [
+            rods_y (),
+            //nema left
+            nema.mesh ().union (Size.toothed_pulley.mesh ("base"))
+                .translate([-_globalWidth / 2 + nema.side_size / 2,
+                            -_globalDepth / 2 + nema.side_size / 2,
+                            0]),
+            // nema right
+            nema.mesh ()
+                .translate([_globalWidth / 2 - nema.side_size / 2,
+                            -_globalDepth/2 + nema.side_size / 2,
+                            0]),
+            motorXY ()
+                .translate ([-_globalWidth/2, - _globalDepth / 2, 0]),
+            motorXY ()
+                .mirroredX ()
+                .translate ([_globalWidth / 2, -_globalDepth / 2, 0]),
+            bearingsXY ()
+                .rotateZ (-90)
+                .translate ([-_globalWidth / 2 + 28,
+                             _globalDepth / 2 + _wallThickness + 5,
+                            0]),
+/*            
+            bearingsXY()
+                .mirroredX()
+                .rotateZ(90)
+                .translate([_globalWidth/2-28,_globalDepth/2+_wallThickness+5,_globalHeight-17]),
+            slideY("left").translate([-_globalWidth/2+6,XaxisOffset,_globalHeight-22]),
+            slideY("right").mirroredX().translate([_globalWidth/2-6,XaxisOffset,_globalHeight-22]),
+            //endstop x
+            endstop_meca().rotateZ(90).rotateX(-90).translate([-_globalWidth/2+56,XaxisOffset+18,_globalHeight-9]),
+            //endstop y
+            endstop_meca().rotateY(-90).translate([-_globalWidth/2+43,XaxisOffset-15,_globalHeight-52]).setColor(0.2,0.2,0.2),
+            
+            headLeft().translate([headoffset,XaxisOffset,_globalHeight-28]),
+            headRight().translate([headoffset+32,XaxisOffset,_globalHeight-28])
+            */
+        ];
+        break;
+
     case 2:
         res = [
             motorXY().rotateX(-90),
@@ -1738,7 +1815,6 @@ function main(params) {
             res.push(extruder(_extrusionType,1).rotateX(180));
         }
         res = makeplate(res);
-
         break;
 
     case 3:
@@ -1844,3 +1920,5 @@ function main(params) {
 
     return res;
 }
+
+
