@@ -50,6 +50,8 @@ var _zBottomHeight = 10;        // Thickness of the bottom support for Z rods an
 var output; // show hide objects  from output choosen in the parameters.
 
 
+var dist;   // Distances (calculated in main).
+
 
 
 // Different constant dimentions.
@@ -75,41 +77,127 @@ var Size = {
         head_r: 7.3 / 2,         // real 5.4
         head_h: 4
     },
-    rod_xy_wall: 3,             // wall thickness of Y rod support on motor mount
+
+    // Wall thickness of Y rod support on motor mount
+    // and on Y slider LM__UU support
+    rod_xy_wall: 3,
+    
     rod_y_wall_dist: 20,        // distance from wall to Y rod axis
     rod_y_nema_overlap: 3,      // how deep Y rods lies in support and lies on motors
+    rod_x_car_overlap: 8,       // how deep X rods lies in Y carriages
 
+    idler_support_h: 0.4,       // It's builtin washer
+
+    x: {
+        d: 0,
+        r: 0,
+        l: 0,
+        lmuu: {},
+        rod: {}
+    },
+    y: {
+        d: 0,
+        r: 0,
+        l: 0,
+        lmuu: {},
+        rod: {}
+    },
+    z: {
+        d: 0,
+        r: 0,
+        l: 0,
+        lmuu: {},
+        rod: {}
+    },
     
-    belt_disp: 3,
-
     calc: function () {
-        this.belt1_h = this.rod_xy_wall + 0.2 + _XYrodsDiam;
-        this.belt2_h = this.belt1_h + belt.width + this.belt_disp;
+
+        this.x.rod.d = _XYrodsDiam;
+        this.x.rod.r = _XYrodsDiam / 2;
+        this.x.rod.l =  XrodLength;
+        
+        this.y.rod.d = _XYrodsDiam;
+        this.y.rod.r = _XYrodsDiam / 2;
+        this.y.rod.l =  YrodLength;
+        
+        this.z.rod.d = _ZrodsDiam;
+        this.z.rod.r = _ZrodsDiam / 2;
+        this.z.rod.l =  ZrodLength;
+        
+        if (_XYrodsDiam == 6) {
+            this.x.rod.lmuu = lm6uu;
+            this.y.rod.lmuu = lm6uu;
+        }
+        if (_XYrodsDiam == 8) {
+            this.x.rod.lmuu = lm8uu;
+            this.y.rod.lmuu = lm8uu;
+        }
+        if (_XYrodsDiam == 10) {
+            this.x.rod.lmuu = lm10uu;
+            this.y.rod.lmuu = lm10uu;
+        }
+        
+        if (_ZrodsDiam == 6) this.z.rod.lmuu = lm6uu;
+        if (_ZrodsDiam == 8) this.z.rod.lmuu = lm8uu;
+        if (_ZrodsDiam == 10) this.z.rod.lmuu = lm10uu;
+        if (_ZrodsDiam == 12) this.z.rod.lmuu = lm12uu;
     },
 };
 
-var idler8 = new Idler (8, 22, 7, 22, 0.5); // One 608 bearing
-var idler3 = new Idler (3, 10, 8, 11.5, 1); // Two 3x10x4 mm flanged bearings
-var idler4 = new Idler (4, 10, 8, 11.65, 0.85); // Two 4x10x4 mm flanged bearings
+// Distances calculation
+var Dist = function () {
+    // X distances
+    this.x = new function () {
+        this.wall_belt_outer = nema.side_size / 2 + Size.toothed_pulley.belt_ro;
+        this.wall_belt_inner = nema.side_size / 2 + Size.toothed_pulley.belt_ro - belt.thickness;
+        this.rod_y_idler_axis = this.wall_belt_outer + idler.r_w - Size.rod_y_wall_dist;
+    };
+
+    this.y = new function () {
+        this.belt_offset = 22;  // Diameter of 608 bearing.
+        this.idler1_idler2 = this.belt_offset - idler.r_i * 2; // Y distance between idlers.
+        
+    };
+    // Z distance form base (motor mount surface).
+    this.z = new function () {
+        this.rod_y = Size.y.rod.r;
+        this.belt_offset = 3;               // Z distance from belt1 to belt2
+        this.belt1 = Size.rod_xy_wall + 0.2 + Size.y.rod.d + 2;
+        this.belt2 = this.belt1 + belt.width + this.belt_offset;
+        this.idler1 = this.belt1 - idler.h_f;
+        this.idler2 = this.belt2 - idler.h_f;
+        this.idler1_slot = this.idler1 - Size.idler_support_h;
+        this.idler2_slot = this.idler2 - Size.idler_support_h;
+        this.idler_slot_size = idler.h + Size.idler_support_h * 2;
+    };
+}
+
+
+
+var idler3 = new Idler (3, 10, 8, 11.5, 1, 6); // Two 3x10x4 mm flanged bearings
+var idler4 = new Idler (4, 10, 8, 11.65, 0.85, 7); // Two 4x10x4 mm flanged bearings
+var idler5 = new Idler (5, 10, 8, 11.65, 0.85, 8); // Two 5x10x4 mm flanged bearings
+var idler8 = new Idler (8, 22, 7, 22, 0.5, 10);     // One 608 bearing
 
 var idler = idler8;
 
-function Idler (d_i, d_w, h, d_f, h_f) {
-    this.d_i = d_i;             // bore D
-    this.d_o = d_w;             // working D
+function Idler (d_i, d_w, h, d_f, h_f, d_s) {
+    this.r_i = d_i / 2;         // bore D
+    this.r_w = d_w / 2;         // working D
     this.h = h;                 // full height
-    this.d_f = d_f;             // flange D
+    this.r_f = d_f / 2;         // flange D
     this.h_f = h_f;             // flange height
+    this.r_s = d_s / 2;         // Support (builtin waser) D
 
     this.mesh = function () {
         var mesh = difference (
             union (
-                cylinder ({r: d_f / 2, h: h_f}),
-                cylinder ({r: d_w / 2, h: h}),
-                cylinder ({r: d_f / 2, h: h_f})
-                    .translate ([0, 0, h - h_f])
+                cylinder ({r: this.r_f, h: this.h_f}),
+                cylinder ({r: this.r_w, h: this.h}),
+                cylinder ({r: this.r_f, h: this.h_f})
+                    .translate ([0, 0, this.h - this.h_f])
             ),
-            cylinder ({r: d_i / 2, h: h + 2})
+            cylinder ({r: this.r_i, h: this.h + 2})
                 .translate ([0, 0, -1])
         );
         return color ([0.7, 0.7, 0.7], mesh);
@@ -199,6 +287,41 @@ var nema17 = {
     }
 };
 
+var Lm_uu = function (dim) {
+    this.ri = dim.ri;
+    this.ro = dim.ro;
+    this.l = dim.l;
+    this.mesh = function () {
+        return difference (
+            cylinder ({r: this.ro, h: this.l}),
+            cylinder ({r: this.ri, h: this.l + 2}).translate ([0, 0, -1])
+        ).setColor (0.5, 0.55, 0.55);
+    }
+};
+
+var lm6uu = new Lm_uu ({
+    ri: 6 / 2,
+    ro: 12 / 2,
+    l: 19
+});
+
+var lm8uu = new Lm_uu ({
+    ri: 8 / 2,
+    ro: 15 / 2,
+    l: 24.2
+});
+
+var lm10uu = new Lm_uu ({
+    ri: 10 / 2,
+    ro: 19 / 2,
+    l: 29
+});
+
+var lm12uu = new Lm_uu ({
+    ri: 12 / 2,
+    ro: 21 / 2,
+    l: 57
+});
 
 // interactive parameters
 
@@ -210,7 +333,7 @@ function getParameterDefinitions() {
             caption: 'What to show :', 
             type: 'choice', 
             values: [0,1,101,102,2,3,4,-1,5,6,7,8,9,10,11,12], 
-            initial: 102,
+            initial: 0,
             captions: ["-----",                // 0
                        "All printer assembly", // 1
                        "Assembly, no walls",   // 101
@@ -586,52 +709,113 @@ function extraSupportBed(){
     );
 }
 
-function slideY (side){
+function slideY (side) {
     var mesh;
-    
+
+    var X = 40;
     var Y = 20;
     var Z = 40;
     var bearingsOffsetZ = 15;
     var bearingsOffsetX = 20;
     var bearingHoleOffsetX = bearingsOffsetX+13;
-    var X = 40;
     var xrodOffsetZ = 18;
+
+    var dist_ = new function () {
+        // Distance from Z base (motor mount surface).
+        this.z = new function () {
+            this.rod_y = 6;
+
+            this.DISP = this.rod_y - Size.y.rod.r;
+
+            this.idler1 = this.DISP + dist.z.idler1;   // bearingsOffsetZ
+            this.idler1_slot = this.DISP + dist.z.idler1_slot;
+            
+            this.idler2 = this.DISP + dist.z.idler2;
+            this.idler2_slot = this.DISP + dist.z.idler2_slot;
+        };
+        this.y = new function () {
+            this.lmuu_extra = Size.y.rod.lmuu.l * 4  / 3 - Y;
+        };
+        this.x = new function () {
+            this.idler1 = dist.x.rod_y_idler_axis; // bearingHoleOffsetX
+            echo ("IIIII: " + this.idler1);
+        };
+    };
+
+    // round bearings support in middle
+    var idler_support = cylinder({
+        r1: idler.r_s + Size.idler_support_h * 2 + 0.1,
+        r2: idler.r_s,
+        h: Size.idler_support_h + 0.1
+    }).translate ([0, 0, - 0.1])
+        .setColor (0.7, 0.4, 0.4);    // XXX DEB
+
     mesh = difference(
         union(
             difference(
                 //main
-                cube({size: [X, Y, Z]}).translate([15, 0, 0]),
-                // support bearings
-                cube({size: [X, Y, 8]}).translate([6.5, 0, bearingsOffsetZ]),
-                cube({size: [X, Y, 8]}).translate([6.5, 0, bearingsOffsetZ + 11])
+                cube({size: [22, Y, Z]})
+                    .translate([dist_.x.idler1, 0, 0])
+                    .union ([
+                        cube({size: [22, Y, dist_.z.idler1_slot]})
+                            .translate ([20, 0, 0]),
+                        cylinder ({r: Y / 2, h: Z})
+                            .translate ([dist_.x.idler1, Y / 2, 0])
+                    ]),
+                // Bearing slots
+                cube({size: [X, Y, dist.z.idler_slot_size]})
+                    .translate([6.5, 0, dist_.z.idler1_slot]),
+                cube({size: [X, Y, dist.z.idler_slot_size]})
+                    .translate([6.5, 0, dist_.z.idler2_slot])
             ),
-            // round bearings supports in middle
-            cylinder({r:5,h:0.5,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,bearingsOffsetZ]),
-            cylinder({r:5,h:4,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,bearingsOffsetZ+7.5]),
-            cylinder({r:5,h:0.5,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,bearingsOffsetZ+11+7.5]),
-
-            //extra rod Y support
-            cylinder({r:_XYlmDiam/2+3,h:Y+10,fn:_globalResolution}).rotateX(-90).translate([14,-10,6]),
-            cube({size:[10,Y+10,6]}).translate([0,-10,3])
-        ),
-
-        // round top bearings
-        difference(
-            cube({size:[20,Y,30]}).translate([10,0,20]),
-            cylinder({r:Y/2,h:30,fn:_globalResolution}).translate([30,Y/2,20])
+            // Bearings support (builtin washers)
+            translate(
+                [dist_.x.idler1, Y / 2, 0],
+                idler_support.translate([0, 0, dist_.z.idler1_slot]),
+                idler_support
+                    .mirroredZ ()
+                    .translate([0, 0, dist_.z.idler1_slot + dist.z.idler_slot_size]),
+                idler_support.translate([0, 0, dist_.z.idler2_slot]),
+                idler_support
+                    .mirroredZ ()
+                    .translate([0, 0, dist_.z.idler2_slot + dist.z.idler_slot_size])
+            ),
+            //LM_UU support
+            cylinder({r: Size.y.rod.lmuu.ro + Size.rod_xy_wall,
+                      h: Y + dist_.y.lmuu_extra})
+                .rotateX (-90)
+                .translate ([14, -dist_.y.lmuu_extra, dist_.z.rod_y]),
             
+            cube({size: [10, Y + dist_.y.lmuu_extra, 6]})
+                .translate([0, -dist_.y.lmuu_extra, 3])
         ),
+
         // long bearing hole
-        cylinder({r:4.1,h:Z-bearingsOffsetZ,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,bearingsOffsetZ]),
-        cylinder({r:3.8,h:bearingsOffsetZ,fn:_globalResolution}).translate([bearingHoleOffsetX,Y/2,0]),
+        cylinder({r: 4.1, h: Z, fn:_globalResolution})
+            .translate([dist_.x.idler1, Y / 2, dist_.z.idler1_slot]),
+        cylinder({r: 3.8, h: dist_.z.idler1_slot, fn:_globalResolution})
+            .translate([dist_.x.idler1, Y / 2, 0]),
+
+        
         // screw for endstop X
-        cylinder({r:1.3,h:12,fn:_globalResolution}).rotateX(90).translate([X+12,Y+1,13]),
-        // rod Y bool
-        cylinder({r:_XYlmDiam/2+0.1,h:Y+15,fn:_globalResolution}).rotateX(-90).translate([14,-15,6]),
-        // rod Y support slice boolean 
-        cube({size:[10,Y+10,1]}).translate([0,-10,5.5]),
+        cylinder({r: 1.3, h: 12, fn: _globalResolution})
+            .rotateX(90)
+            .translate([X+12,Y+1,13]),
+        
+        // LM_UU Y bool
+        cylinder({r: Size.y.rod.lmuu.ro + 0.1, h: Y + dist_.y.lmuu_extra + 2, fn:_globalResolution})
+            .rotateX (-90)
+            .translate ([14, -dist_.y.lmuu_extra - 1, dist_.z.rod_y]),
+        
+        // LM_UU Y support slice boolean 
+        cube({size: [10, Y + dist_.y.lmuu_extra + 2, 1]})
+            .translate([0, -dist_.y.lmuu_extra - 1, dist_.z.rod_y - 0.5]),
+        
         // Xrods hole top
-        cylinder({r:_XYrodsDiam/2,h:8,fn:_globalResolution}).rotateY(90).translate([X+7,Y/2,_XYrodsDiam/2+6]),
+        cylinder ({r: Size.x.rod.r, h: Size.rod_x_car_overlap, fn: _globalResolution})
+            .rotateY (90)
+            .translate ([X + 7, Y / 2, Size.x.rod.r + dist_.z.rod_y]),
+        
         // screw to attach the rod top
         cylinder({r:1.3,h:10,fn:_globalResolution}).rotateX(-90).translate([X+12,0,_XYrodsDiam/2+6]),
         // Xrods hole bottom
@@ -655,11 +839,11 @@ function slideY (side){
         );
     }
     
-    if(output==0){
+    if(output == 0){
         mesh = union(
             mesh,
-            bearing608z().translate([bearingHoleOffsetX, Y / 2, 15.5]),
-            bearing608z().translate([bearingHoleOffsetX, Y / 2, 26.5])
+            bearing608z().translate([bearingHoleOffsetX, Y / 2, dist_.z.idler1]),
+            bearing608z().translate([bearingHoleOffsetX, Y / 2, dist_.z.idler2])
         );
     }
 
@@ -836,7 +1020,6 @@ var motor_mount = {
     thickness: 5,               // thickness of wall support
 
     mesh: function () {
-        var _XYrods_r = _XYrodsDiam / 2;
         var nema_screw_offset = nema.side_size / 2 - nema.mount_dist;
         var height = this.thickness + this.wall_trap_h;
         return difference (
@@ -856,19 +1039,19 @@ var motor_mount = {
                                 0,
                                 this.wall_trap_h / 2]),
                 // rod support - half slotted hole
-                cylinder ({r: _XYrods_r + Size.rod_xy_wall,
+                cylinder ({r: Size.y.rod.r + Size.rod_xy_wall,
                            h: nema.side_size / 2})
                     .rotateX (90)
-                    .translate ([Size.rod_y_wall_dist, nema.side_size, _XYrods_r]),
-                cube ({size: [Size.rod_y_wall_dist, _nemaXYZ / 2, _XYrods_r + 3]})
+                    .translate ([Size.rod_y_wall_dist, nema.side_size, Size.y.rod.r]),
+                cube ({size: [Size.rod_y_wall_dist, _nemaXYZ / 2, Size.y.rod.r + 3]})
                     .translate([0, _nemaXYZ / 2, 0])
             ).setColor(0.2, 0.7, 0.2),
             nemaHole (_nemaXYZ)
                 .translate ([_nemaXYZ / 2, _nemaXYZ / 2, -1]),
             // rod support hole
-            cylinder ({r: _XYrods_r, h: 12, fn: _globalResolution})
+            cylinder ({r: Size.y.rod.r, h: 12, fn: _globalResolution})
                 .rotateX(90)
-                .translate([Size.rod_y_wall_dist, _nemaXYZ, _XYrods_r])
+                .translate([Size.rod_y_wall_dist, _nemaXYZ, Size.y.rod.r])
                 .setColor(0.2, 0.7, 0.2),
             //extra bool for printable
             cube({size: [20, 20, 20]})
@@ -918,7 +1101,7 @@ function motorXY () {
 function bearingsXY(){
     var mesh;
     
-    var X = _wallThickness + motor_mount.thickness * 2 + 1 + idler.d_f / 2;
+    var X = _wallThickness + motor_mount.thickness * 2 + 1 + idler.r_f;
     var Y = 20;
     var Z = motor_mount.wall_trap_h + idler.h * 2 ;
     var bearingsOffsetZ = 10;
@@ -1260,30 +1443,18 @@ function rods_y () {
     var overlap = Size.rod_y_nema_overlap;
     return union (
         // rod y left
-        cylinder ({r: _XYrodsDiam / 2, h: YrodLength})
+        cylinder ({r: Size.y.rod.r, h: Size.y.rod.l})
             .rotateX (-90)
-            .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
-                         -_globalDepth / 2 + nema.side_size - overlap,
-                         0]),
+            .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist, 0, 0]),
         // rod y right
-        cylinder({r: _XYrodsDiam / 2, h: YrodLength})
+        cylinder({r: Size.y.rod.r, h: Size.y.rod.l})
             .rotateX (-90)
-            .translate ([_globalWidth / 2 - Size.rod_y_wall_dist,
-                        -_globalDepth / 2 + nema.side_size - overlap,
-                         0])
+            .translate ([_globalWidth / 2 - Size.rod_y_wall_dist, 0, 0])
     )
-        .translate ([0, 0, _XYrodsDiam / 2])
+        .translate ([0,
+                     -_globalDepth / 2 + nema.side_size - overlap,
+                     dist.z.rod_y])
         .setColor(0.6,0.6,0.6);
-    
-/*
-        // rod y left bearing
-        cylinder ({r: _XYlmDiam / 2, h:50})
-            .rotateX (90)
-            .translate ([-_globalWidth / 2 + 20,
-                         90,
-                         0])
-            .setColor(0.6,0.6,0.6),
-*/
 }
 
 function _rodsZ() {  
@@ -1492,8 +1663,8 @@ function bearingMiddle(hole){
 
 function bearing608z(){
     return difference(
-        cylinder({r:11,h:7,fn:_globalResolution}).setColor(0.4,0.4,0.4),
-        cylinder({r:4,h:7,fn:_globalResolution})
+        cylinder({r: 11, h:7}).setColor(0.4,0.4,0.4),
+        cylinder({r: 4, h:7})
     );
 }
 
@@ -1728,6 +1899,7 @@ function main(params) {
 
     Size.toothed_pulley = toothed_pulley_16; // TODO add 20 toothed pulley
     Size.calc ();                            // Make final dimensions calculation
+
     
     _globalDepth = _printableDepth + 110; // = motor support depth + bearings depth + head depth /2
     _globalWidth = _printableWidth + 165; // = motor uspport width + bearings width + head width /2
@@ -1749,6 +1921,8 @@ function main(params) {
     var ztopbottomX = (_ZrodsWidth+_ZrodsDiam+(_rodsSupportThickness*2))/2;
     var zslideX = (_ZrodsWidth+_ZlmDiam+(_rodsSupportThickness*2))/2;
     
+    dist = new Dist();
+    
     var res=null;
 
 
@@ -1756,8 +1930,7 @@ function main(params) {
     case 0:
         res = [
             _axis ().translate ([-40, -40, 0]),
-            bearingsXY (),
-            idler4.mesh ().translate ([-40, -40, 0]),
+            slideY ("left"),
         ];
         break;
 
@@ -1844,32 +2017,40 @@ function main(params) {
         break;
 
     case 102:
+        // Motor connected to mount.
+        var motor_and_mount = union (
+            motor_mount.mesh (),
+            nema.mesh ()
+                .translate([nema.side_size / 2, nema.side_size / 2, 0])
+        );
+
+        // Left motor + mount + thoothed pulley
+        var left_motor_and_mount = union (
+            motor_and_mount,
+            Size.toothed_pulley.mesh ("belt")
+                .translate ([nema.side_size / 2, nema.side_size / 2, dist.z.belt1])
+        );
+            
+        // Right motor + mount + thoothed pulley
+        var right_motor_and_mount = union (
+            motor_and_mount,
+            Size.toothed_pulley.mesh ("belt")
+                .translate ([nema.side_size / 2, nema.side_size / 2, dist.z.belt2])
+        ).mirroredX ();
+        
         res = [
             rods_y (),
             //nema left
-            union (
-                nema.mesh (),
-                Size.toothed_pulley.mesh ("belt")
-                    .translate ([0, 0, Size.belt1_h])
-            )
-                .translate([-_globalWidth / 2 + nema.side_size / 2,
-                            -_globalDepth / 2 + nema.side_size / 2,
-                            0]),
-            // nema right
-            nema.mesh ()
-                .translate([_globalWidth / 2 - nema.side_size / 2,
-                            -_globalDepth/2 + nema.side_size / 2,
-                            0]),
-            motorXY ()
+            left_motor_and_mount
                 .translate ([-_globalWidth/2, - _globalDepth / 2, 0]),
-            motorXY ()
-                .mirroredX ()
+            // nema right
+            right_motor_and_mount
                 .translate ([_globalWidth / 2, -_globalDepth / 2, 0]),
             belt.mesh (90)
                 .rotateZ (90)
                 .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.toothed_pulley.belt_ro,
                             -_globalDepth / 2 + nema.side_size / 2,
-                            Size.belt1_h]),
+                            dist.z.belt1]),
             
             bearingsXY ()
                 .rotateZ (-90)
