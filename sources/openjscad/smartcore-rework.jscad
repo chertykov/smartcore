@@ -87,7 +87,8 @@ var Size = {
     rod_x_car_overlap: 8,       // how deep X rods lies in Y carriages
 
     idler_support_h: 0.4,       // It's builtin washer
-
+    lmuu_fix_plate: 6,          // Width of LM_UU fix plate for M3 screw.
+    
     x: {
         d: 0,
         r: 0,
@@ -99,7 +100,8 @@ var Size = {
         d: 0,
         r: 0,
         l: 0,
-        lmuu: {},
+        lmuu: {
+        },
         rod: {}
     },
     z: {
@@ -125,22 +127,22 @@ var Size = {
         this.z.rod.l =  ZrodLength;
         
         if (_XYrodsDiam == 6) {
-            this.x.rod.lmuu = lm6uu;
-            this.y.rod.lmuu = lm6uu;
+            this.x.lmuu = lm6uu;
+            this.y.lmuu = lm6uu;
         }
         if (_XYrodsDiam == 8) {
-            this.x.rod.lmuu = lm8uu;
-            this.y.rod.lmuu = lm8uu;
+            this.x.lmuu = lm8uu;
+            this.y.lmuu = lm8uu;
         }
         if (_XYrodsDiam == 10) {
-            this.x.rod.lmuu = lm10uu;
-            this.y.rod.lmuu = lm10uu;
+            this.x.lmuu = lm10uu;
+            this.y.lmuu = lm10uu;
         }
         
-        if (_ZrodsDiam == 6) this.z.rod.lmuu = lm6uu;
-        if (_ZrodsDiam == 8) this.z.rod.lmuu = lm8uu;
-        if (_ZrodsDiam == 10) this.z.rod.lmuu = lm10uu;
-        if (_ZrodsDiam == 12) this.z.rod.lmuu = lm12uu;
+        if (_ZrodsDiam == 6) this.z.lmuu = lm6uu;
+        if (_ZrodsDiam == 8) this.z.lmuu = lm8uu;
+        if (_ZrodsDiam == 10) this.z.lmuu = lm10uu;
+        if (_ZrodsDiam == 12) this.z.lmuu = lm12uu;
     },
 };
 
@@ -148,8 +150,8 @@ var Size = {
 var Dist = function () {
     // X distances
     this.x = new function () {
-        this.wall_belt_outer = nema.side_size / 2 + Size.toothed_pulley.belt_ro;
-        this.wall_belt_inner = nema.side_size / 2 + Size.toothed_pulley.belt_ro - belt.thickness;
+        this.wall_belt_outer = nema.side_size / 2 + Size.gt2_pulley.belt_ro;
+        this.wall_belt_inner = nema.side_size / 2 + Size.gt2_pulley.belt_ro - belt.thickness;
         this.rod_y_idler_axis = this.wall_belt_outer + idler.r_w - Size.rod_y_wall_dist;
     };
 
@@ -205,7 +207,7 @@ function Idler (d_i, d_w, h, d_f, h_f, d_s) {
 }
 
 
-function Toothed_Pulley () {
+function Gt2_Pulley () {
     this.ri = 5.0 / 2;
     this.ro = 9.8 / 2;
     this.belt_ro = 11.2 / 2.0;
@@ -234,7 +236,7 @@ function Toothed_Pulley () {
     };
 }
 
-var toothed_pulley_16 = new Toothed_Pulley ();
+var gt2_pulley_16 = new Gt2_Pulley ();
 
 // Nema 17 x 39 parameters.
 // XXX TODO nema 14
@@ -711,6 +713,7 @@ function extraSupportBed(){
 
 function slideY (side) {
     var mesh;
+    var old_mesh;
 
     var X = 40;
     var Y = 20;
@@ -734,11 +737,10 @@ function slideY (side) {
             this.idler2_slot = this.DISP + dist.z.idler2_slot;
         };
         this.y = new function () {
-            this.lmuu_extra = Size.y.rod.lmuu.l * 4  / 3 - Y;
+            this.lmuu_extra = Size.y.lmuu.l * 4  / 3 - Y;
         };
         this.x = new function () {
             this.idler1 = dist.x.rod_y_idler_axis; // bearingHoleOffsetX
-            echo ("IIIII: " + this.idler1);
         };
     };
 
@@ -750,7 +752,61 @@ function slideY (side) {
     }).translate ([0, 0, - 0.1])
         .setColor (0.7, 0.4, 0.4);    // XXX DEB
 
-    mesh = difference(
+    var lmuu_support_r = Size.y.lmuu.ro + Size.rod_xy_wall;
+    var lmuu_support = union (
+        cylinder({r: lmuu_support_r,
+                  h: Y + dist_.y.lmuu_extra})
+            .rotateX (-90),
+        cube({size: [Size.lmuu_fix_plate + lmuu_support_r, Y + dist_.y.lmuu_extra, 6]})
+            .mirroredX()
+            .translate([0, 0, -3])
+    );
+
+    var rod_x_overlap = 7;
+    var rod_x_wall = 2;
+    var body_width = 20;        // It's D_outer_608 - 2mm
+    var idler_clr = 1;          // Idler slot
+    var idler_slot_depth = idler.ro * 2 + 2;
+    var body_l = rod_x_overlap + rod_x_wall + 1 + idler.r_w + dist.x.rod_y_idler_axis;
+    var body_height =
+        dist.z.idler2_slot + Size.idler_support_h * 2 + idler.h
+        + 6;
+
+    var body =
+        difference (
+            union (
+                cube ([body_l, body_width, dist.z.idler1_slot]),
+                cube ([body_l - dist.x.rod_y_idler_axis, body_width, body_height])
+                    .translate ([dist.x.rod_y_idler_axis, 0, 0]),
+                cylinder ({r: body_width / 2, h: body_height})
+                    .translate ([dist.x.rod_y_idler_axis, body_width / 2, 0])
+            ),
+            
+        );
+    
+    if (0)
+    var body = difference(
+        //main
+        cube({size: [22, Y, Z]})
+            .translate([dist_.x.idler1, 0, 0])
+            .union ([
+                cube({size: [22, Y, dist_.z.idler1_slot]})
+                    .translate ([20, 0, 0]),
+                cylinder ({r: Y / 2, h: Z})
+                    .translate ([dist_.x.idler1, Y / 2, 0])
+            ]),
+        // Bearing slots
+        cube({size: [X, Y, dist.z.idler_slot_size]})
+            .translate([6.5, 0, dist_.z.idler1_slot]),
+        cube({size: [X, Y, dist.z.idler_slot_size]})
+            .translate([6.5, 0, dist_.z.idler2_slot])
+    );
+
+    
+    mesh = union (lmuu_support, body);
+
+    if (0)
+    old_mesh = difference(
         union(
             difference(
                 //main
@@ -781,7 +837,7 @@ function slideY (side) {
                     .translate([0, 0, dist_.z.idler2_slot + dist.z.idler_slot_size])
             ),
             //LM_UU support
-            cylinder({r: Size.y.rod.lmuu.ro + Size.rod_xy_wall,
+            cylinder({r: Size.y.lmuu.ro + Size.rod_xy_wall,
                       h: Y + dist_.y.lmuu_extra})
                 .rotateX (-90)
                 .translate ([14, -dist_.y.lmuu_extra, dist_.z.rod_y]),
@@ -803,7 +859,7 @@ function slideY (side) {
             .translate([X+12,Y+1,13]),
         
         // LM_UU Y bool
-        cylinder({r: Size.y.rod.lmuu.ro + 0.1, h: Y + dist_.y.lmuu_extra + 2, fn:_globalResolution})
+        cylinder({r: Size.y.lmuu.ro + 0.1, h: Y + dist_.y.lmuu_extra + 2, fn:_globalResolution})
             .rotateX (-90)
             .translate ([14, -dist_.y.lmuu_extra - 1, dist_.z.rod_y]),
         
@@ -1897,7 +1953,7 @@ function main(params) {
     if(_ZrodsDiam==10){ _ZlmDiam = 19;}
     if(_ZrodsDiam==12){ _ZlmDiam = 21;}
 
-    Size.toothed_pulley = toothed_pulley_16; // TODO add 20 toothed pulley
+    Size.gt2_pulley = gt2_pulley_16; // TODO add 20 toothed pulley
     Size.calc ();                            // Make final dimensions calculation
 
     
@@ -2027,14 +2083,14 @@ function main(params) {
         // Left motor + mount + thoothed pulley
         var left_motor_and_mount = union (
             motor_and_mount,
-            Size.toothed_pulley.mesh ("belt")
+            Size.gt2_pulley.mesh ("belt")
                 .translate ([nema.side_size / 2, nema.side_size / 2, dist.z.belt1])
         );
             
         // Right motor + mount + thoothed pulley
         var right_motor_and_mount = union (
             motor_and_mount,
-            Size.toothed_pulley.mesh ("belt")
+            Size.gt2_pulley.mesh ("belt")
                 .translate ([nema.side_size / 2, nema.side_size / 2, dist.z.belt2])
         ).mirroredX ();
         
@@ -2048,7 +2104,7 @@ function main(params) {
                 .translate ([_globalWidth / 2, -_globalDepth / 2, 0]),
             belt.mesh (90)
                 .rotateZ (90)
-                .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.toothed_pulley.belt_ro,
+                .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.gt2_pulley.belt_ro,
                             -_globalDepth / 2 + nema.side_size / 2,
                             dist.z.belt1]),
             
