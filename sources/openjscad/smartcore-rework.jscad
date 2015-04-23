@@ -10,6 +10,7 @@
 
            TODO:
            - clips glass
+           - adjust carriage_y size to 2 * LM_UU lenght
 
 ***********/
 
