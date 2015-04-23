@@ -723,28 +723,30 @@ var Carriage_y = function () {
     this.rod_x_wall = 2;
     this.body_width = 20;        // It's D_outer_608 - 2mm
     this.idler_slot_r = idler.r_w * 2 + 2;
-    this.body_l = Size.rod_x_car_overlap + this.rod_x_wall + 1 + idler.r_w + dist.x.rod_y_idler_axis;
+    this.body_l =
+        Size.rod_x_car_overlap + this.rod_x_wall + 1 +
+        idler.r_w + dist.x.rod_y_idler_axis;
     this.body_height =
         dist.z.idler2_slot + Size.idler_support_h * 2 + idler.h + 6;
-
     
     this.lmuu_support_r = Size.y.lmuu.ro + Size.rod_xy_wall;
     this.lmuu_fix_plate_thickness = 6;
     this.lmuu_extra = Size.y.lmuu.l * 4  / 3 - this.body_width;
 };
 
-Carriage_y.__proto__.mesh = function (opt) {
+Carriage_y.prototype.mesh = function (opt) {
     var mesh;
 
     if (typeof opt != "string")
         opt = "";
 
     // round bearings support in middle
-    var idler_support = cylinder({
-        r1: idler.r_s + Size.idler_support_h * 2 + 0.1,
-        r2: idler.r_s,
-        h: Size.idler_support_h + 0.1
-    }).translate ([0, 0, - 0.1])
+    var idler_support =
+        cylinder({
+            r1: idler.r_s + Size.idler_support_h * 2 + 0.1,
+            r2: idler.r_s,
+            h: Size.idler_support_h + 0.1
+        }).translate ([0, 0, - 0.1])
         .setColor (0.7, 0.4, 0.4);    // XXX DEB
 
     var lmuu_support =
