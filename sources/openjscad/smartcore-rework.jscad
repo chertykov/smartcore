@@ -52,6 +52,10 @@ var endxJheadAttachHolesWidth = 32; // tempo..
 var _zBottomHeight = 10;        // Thickness of the bottom support for Z rods and Z motor mount plate.
 var output; // show hide objects  from output choosen in the parameters.
 
+
+var carriage_y;                 // Carriage Y object.
+
+
 // Distances (calculated in Size.calc () called from main).
 var dist = {x: {}, y: {}, z: {}};
 
@@ -778,10 +782,9 @@ Carriage_y.prototype.mesh = function (opt) {
                              0])
         ])
         .setColor (0.5, 0.8, 0.4);    // XXX DEB
-    ;
 
+    // Main body.
     var body =
-        // Main body.
         // Base point: [idler shaft, idler shaft, 0]
         union (
             // Lower rect
@@ -857,13 +860,14 @@ Carriage_y.prototype.mesh = function (opt) {
             idler.mesh ().translate ([0, 0, dist.z.idler1]),
             idler.mesh ().translate ([0, 0, dist.z.idler2])
         ]);
-    
-    mesh = lmuu_support
-        .union (
-            body.translate ([dist.x.rod_y_idler_axis,
-                             this.body_width / 2 + this.lmuu_extra,
-                             -Size.y.rod.r])
-        )
+
+    // Construct whole carriage.
+    mesh = union (
+        lmuu_support,
+        body.translate ([dist.x.rod_y_idler_axis,
+                         this.body_width / 2 + this.lmuu_extra,
+                         -Size.y.rod.r])
+    )
         .subtract ([
             // LM_UU support internal hole.
             cylinder ({r: Size.y.lmuu.ro + Size.clr.minimal,
@@ -892,15 +896,9 @@ Carriage_y.prototype.mesh = function (opt) {
         .subtract ([
             // Look inside
 //            cube ([50,50,50]).mirroredZ()
-        ])
-
-        ;
-    ;
-    
+        ]);
     return mesh;
 };
-
-var carriage_y = new Carriage_y ();
 
 function slideY (opt) {
     return carriage_y.mesh (opt);
@@ -1996,7 +1994,8 @@ function main(params) {
 
     // Make final dimensions calculation
     Size.calc ();
-
+    carriage_y = new Carriage_y ();
+    
     var res=null;
 
 
@@ -2091,13 +2090,23 @@ function main(params) {
         break;
 
     case 102:
-        // Motor connected to mount.
         var pos = {
             x: _position.x,
-            y: -_globalDepth / 2 + nema.side_size + _position.y,
+            y: {
+                // Y coordinate of carriage y
+                car_y: -_globalDepth / 2 + nema.side_size + _position.y,
+            },
             z: _position.z
         };
-//        pos.y_rod_x  = pos.y + carriage_y.lmuu_extra + carriage_y.body_width / 2;
+        // Y coordinate of X rods.
+        pos.y.rod_x  = pos.y.car_y + carriage_y.lmuu_extra + carriage_y.body_width / 2;
+
+        // Belt segments
+        var belt1_len = [0];
+        belt1_len[1] = pos.y.rod_x - (-_globalDepth / 2 + nema.side_size / 2);
+        
+        
+        // Motor connected to mount.
         var motor_and_mount = union (
             motor_mount.mesh (),
             nema.mesh ()
@@ -2126,18 +2135,18 @@ function main(params) {
             // nema right
             right_motor_and_mount
                 .translate ([_globalWidth / 2, -_globalDepth / 2, 0]),
-            belt.mesh (130)
+            belt.mesh (belt1_len[1])
                 .rotateZ (90)
                 .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.gt2_pulley.belt_ro,
                             -_globalDepth / 2 + nema.side_size / 2,
                             dist.z.belt1]),
             slideY ("bearings")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
-                             pos.y,
+                             pos.y.car_y,
                              Size.z.rod.r]),
             slideY ("bearings")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
-                             pos.y,
+                             pos.y.car_y,
                              Size.z.rod.r])
                 .mirroredX (),
             
