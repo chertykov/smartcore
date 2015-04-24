@@ -333,7 +333,7 @@ function getParameterDefinitions() {
             caption: 'What to show :', 
             type: 'choice', 
             values: [0,1,101,102,2,3,4,-1,5,6,7,8,9,10,11,12], 
-            initial: 102,
+            initial: 0,
             captions: ["-----",                // 0
                        "All printer assembly", // 1
                        "Assembly, no walls",   // 101
@@ -715,15 +715,7 @@ function extraSupportBed(){
     );
 }
 
-// Utility functions.
-
-// cube located as a cylinder.
-function ccube (_args_) {
-    var c = cube (_args_);
-    return c.translate ([-c.getBounds ()[1].x / 2, -c.getBounds ()[1].y / 2, 0]);
-}
-
-
+// Y caarriage object.
 var Carriage_y = function () {
     this.rod_x_wall = 2;
     this.body_width = 20;        // It's D_outer_608 - 2mm
@@ -760,15 +752,14 @@ Carriage_y.prototype.mesh = function (opt) {
     var lmuu_support =
         union (
             // Support body.
-            cylinder ({r: this.lmuu_support_r,
-                       h: this.lmuu_support_width})
+            cylinder ({r: this.lmuu_support_r, h: this.lmuu_support_width})
                 .rotateX (-90),
             // LM_UU fix plate.
-            cube ([Size.lmuu_fix_plate + this.lmuu_support_r,
-                   this.lmuu_support_width,
-                   this.lmuu_fix_plate_thickness])
+            cube ({size: [Size.lmuu_fix_plate + this.lmuu_support_r,
+                          this.lmuu_support_width,
+                          this.lmuu_fix_plate_thickness],
+                   center: [false,false,true]})
                 .mirroredX()
-                .translate([0, 0, -3])
         )
         .subtract ([
             // Screw holes for LM_UU fix
@@ -784,50 +775,49 @@ Carriage_y.prototype.mesh = function (opt) {
                 .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r,
                              this.lmuu_support_width - 8,
                              0])
-        ])
-        .setColor (0.5, 0.8, 0.4);    // XXX DEB
+        ]);
 
     // Main body.
+    // Base point: [idler shaft, idler shaft, 0]
     var body =
-        // Base point: [idler shaft, idler shaft, 0]
         union (
             // Lower rect
-            cube ([this.body_l, this.body_width, dist.z.idler1_slot])
-                .translate ([-dist.x.rod_y_idler_axis, -this.body_width / 2, 0]),
+            cube ({size: [this.body_l, this.body_width, dist.z.idler1_slot],
+                   center: [0, 1, 0]})
+                .translate ([-dist.x.rod_y_idler_axis, 0, 0]),
             // Upper rect
-            cube ([this.body_l - dist.x.rod_y_idler_axis,
-                   this.body_width,
-                   this.body_height])
-                .translate ([0, -this.body_width / 2, 0]),
+            cube ({size: [this.body_l - dist.x.rod_y_idler_axis,
+                          this.body_width,
+                          this.body_height],
+                   center: [0, 1, 0]}),
             // Round upper rect
-            cylinder ({r: this.body_width / 2, h: this.body_height})
-                .translate ([0, 0, 0])
+            cylinder ({d: this.body_width, h: this.body_height})
         )
         .subtract ([
             // Bearing slots.
-            ccube ([this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size])
-                .translate([0, 0, dist.z.idler1_slot]),
-            ccube ([this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size])
-                .translate([0, 0, dist.z.idler2_slot])
+            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
+                   center: [1, 1, 0]})
+                .translate ([0, 0, dist.z.idler1_slot]),
+            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
+                   center: [1, 1, 0]})
+                .translate ([0, 0, dist.z.idler2_slot])
         ])
         .union ([
             // Idler bearings support (builtin washers).
-            idler_support.translate([0, 0, dist.z.idler1_slot]),
-            idler_support
-                .mirroredZ ()
-                .translate([0, 0, dist.z.idler1_slot + dist.z.idler_slot_size]),
-            idler_support.translate([0, 0, dist.z.idler2_slot]),
-            idler_support
-                .mirroredZ ()
-                .translate([0, 0, dist.z.idler2_slot + dist.z.idler_slot_size])
+            idler_support.translate ([0, 0, dist.z.idler1_slot]),
+            idler_support.mirroredZ ()
+                .translate ([0, 0, dist.z.idler1_slot + dist.z.idler_slot_size]),
+            idler_support.translate ([0, 0, dist.z.idler2_slot]),
+            idler_support.mirroredZ ()
+                .translate ([0, 0, dist.z.idler2_slot + dist.z.idler_slot_size])
         ])
         .subtract ([
             // Bearing shaft hole.
             // Free part.
-            cylinder({r: 4.1, h: this.body_height, fn: _globalResolution})
+            cylinder ({r: 4.1, h: this.body_height, fn: _globalResolution})
                 .translate([0, 0, dist.z.idler1_slot]),
             // Tight part (self tap)
-            cylinder({r: 3.8, h: dist.z.idler1_slot, fn: _globalResolution}),
+            cylinder ({r: 3.8, h: dist.z.idler1_slot, fn: _globalResolution}),
             // rod_x1 hole bottom
             cylinder ({r: Size.x.rod.r + Size.clr.tight,
                        h: Size.rod_x_car_overlap + 1,
@@ -850,7 +840,7 @@ Carriage_y.prototype.mesh = function (opt) {
                 .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
                             0,
                             dist.z.rod_x1 + Size.x.rod.r * 2 / 3]),
-            // rod_x1 fix screw hole
+            // rod_x2 fix screw hole
             cylinder ({r: Size.m3.screw_r, h: this.body_width, fn: 8})
                 .rotateX(90)
                 .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
@@ -880,9 +870,10 @@ Carriage_y.prototype.mesh = function (opt) {
                 .rotateX (-90)
                 .translate ([0, -1, 0]),
             // Fix plate slit.
-            cube ([Size.y.lmuu.ro * 3, Size.y.lmuu.l * 2, 1])
+            cube ({size: [Size.y.lmuu.ro * 3, Size.y.lmuu.l * 2, 1],
+                   center: [0, 0, 1]})
                 .mirroredX ()
-                .translate ([0, -1, -0.5]),
+                .translate ([0, -1, 0]),
             // Bevels
             cylinder ({r1: Size.y.lmuu.ro + 1,
                        r2: Size.y.lmuu.ro - 1,
@@ -898,13 +889,19 @@ Carriage_y.prototype.mesh = function (opt) {
         .union ([
         ])
         .subtract ([
-            // Look inside
+        ]);
+
+    if (opt.indexOf ("debug") > -1) {
+        // Look inside
+        mesh = difference (
+            mesh,
             cube ([50,50,50]).mirroredZ(),
             cube ([50,50,50])
                 .translate ([dist.x.rod_y_idler_axis,
                              this.lmuu_support_width - this.body_width / 2,
                              -1])
-        ]);
+        );
+    }
 
     // Output linear bearings (debugging/view).
     if (opt.indexOf ("lmuu") > -1)
@@ -1100,16 +1097,16 @@ var motor_mount = {
         return difference (
             union (
                 // base
-                cube ({size: [_nemaXYZ / 2 - 5, _nemaXYZ, this.thickness + 2]}),
+                cube ([Size.rod_y_wall_dist, nema.side_size, this.thickness + 2]),
                 // wall support
-                cube ({size: [9, _nemaXYZ, this.wall_trap_h]}),
+                cube ([9, nema.side_size, this.wall_trap_h]),
                 //top fix
-                cube ({size: [_wallThickness + 9, _nemaXYZ, this.thickness]})
+                cube ([_wallThickness + 9, nema.side_size, this.thickness])
                     .translate([-_wallThickness, 0, this.wall_trap_h]),
                 // back fix
-                cube ({size: [this.thickness,
-                              _nemaXYZ,
-                              this.wall_trap_h / 2  + this.thickness]})
+                cube ([this.thickness,
+                       nema.side_size,
+                       this.wall_trap_h / 2  + this.thickness])
                     .translate([-_wallThickness - this.thickness,
                                 0,
                                 this.wall_trap_h / 2]),
@@ -1117,24 +1114,25 @@ var motor_mount = {
                 cylinder ({r: Size.y.rod.r + Size.rod_xy_wall,
                            h: nema.side_size / 2})
                     .rotateX (90)
-                    .translate ([Size.rod_y_wall_dist, nema.side_size, Size.y.rod.r]),
-                cube ({size: [Size.rod_y_wall_dist, _nemaXYZ / 2, Size.y.rod.r + 3]})
-                    .translate([0, _nemaXYZ / 2, 0])
+                    .translate ([Size.rod_y_wall_dist, nema.side_size, Size.y.rod.r])
             ).setColor(0.2, 0.7, 0.2),
-            nemaHole (_nemaXYZ)
-                .translate ([_nemaXYZ / 2, _nemaXYZ / 2, -1]),
+            nemaHole (nema.side_size)
+                .translate ([nema.side_size / 2, nema.side_size / 2, -1]),
             // rod support hole
             cylinder ({r: Size.y.rod.r, h: 12, fn: _globalResolution})
                 .rotateX(90)
-                .translate([Size.rod_y_wall_dist, _nemaXYZ, Size.y.rod.r])
+                .translate([Size.rod_y_wall_dist, nema.side_size, Size.y.rod.r])
                 .setColor(0.2, 0.7, 0.2),
-            //extra bool for printable
-            cube({size: [20, 20, 20]})
-                .translate([_nemaXYZ / 2, _nemaXYZ / 2 - 20 + nema.ring_r + Size.clr.free, -1]),
+            // straighten half of rod support
+            cube({size: [(nema.ring_r + Size.clr.free) * 2,
+                         (nema.ring_r + Size.clr.free) * 2,
+                         100],
+                  center: [0, 1, 1]})
+                .translate([nema.side_size / 2, nema.side_size / 2, -1]),
             // round
-            roundBoolean2(5, _nemaXYZ, "br")
+            roundBoolean2(5, nema.side_size, "br")
                 .translate([-_wallThickness - this.thickness, 0, this.thickness + 15]),
-            //  holes to fix on the wood side - version simple
+            // holes to fix on the wood side - version simple
             // wood screw holes
             cylinder({r: Size.m4.screw_r, h: 20, fn: 8})
                 .rotateX(-90)
@@ -1143,10 +1141,10 @@ var motor_mount = {
             cylinder ({r: Size.m4.screw_r, h: 20, fn: 8})
                 .rotateX(-90)
                 .rotateZ(90)
-                .translate([-_wallThickness, _nemaXYZ - 7, this.wall_trap_h - 5]),
+                .translate([-_wallThickness, nema.side_size - 7, this.wall_trap_h - 5]),
             // extra nema bool (motor body)
-            cube({size: [_nemaXYZ, _nemaXYZ, _nemaXYZ]})
-                .translate([0, 0, -_nemaXYZ]),
+            cube({size: [nema.side_size, nema.side_size, nema.side_size]})
+                .translate([0, 0, -nema.side_size]),
             // Screw head traps.
             cylinder ({r: Size.m3.head_r, h: 10, fn: _globalResolution})
                 .translate ([nema_screw_offset,
@@ -1156,7 +1154,7 @@ var motor_mount = {
                 .translate ([nema_screw_offset,
                              nema.side_size - nema_screw_offset,
                              height - Size.m3.head_h]),
-            // Corner groove
+            // Corners groove
             cylinder ({d: 0.6, h: nema.side_size + 2, fn: 16})
                 .rotateX(-90)
                 .translate ([-0.2, -1, this.wall_trap_h - 0.2]),
@@ -1171,6 +1169,9 @@ function motorXY () {
     return motor_mount.mesh ();
 }
 
+
+var idler_mount = {
+};
 
 // 
 function bearingsXY(){
@@ -1198,7 +1199,7 @@ function bearingsXY(){
                             .translate ([X - Y, 0, 0])
                     ),
                     // Y rod hole xtra
-                    cylinder ({r: _XYrodsDiam / 2 + Size.rod_xy_wall,
+                    cylinder ({r: Size.y.rod.r + Size.rod_xy_wall,
                                h: idler_rod_support_l})
                         .rotateX (-90)
                         .rotateZ (90)
@@ -2044,7 +2045,8 @@ function main(params) {
     case 0:
         res = [
             _axis ().translate ([-40, -40, 0]),
-            slideY ("bearing left lmuu"),
+            motor_mount.mesh ()
+//            slideY ("bearing left lmuu"),
         ];
         break;
 
@@ -2184,11 +2186,11 @@ function main(params) {
                 .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.gt2_pulley.belt_ro,
                             -_globalDepth / 2 + nema.side_size / 2,
                             dist.z.belt1]),
-            slideY ("bearings lmuu")
+            slideY ("bearings lmuu debug")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
                              pos.y.car_y,
                              Size.z.rod.r]),
-            slideY ("bearings lmuu")
+            slideY ("bearings lmuu debug")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
                              pos.y.car_y,
                              Size.z.rod.r])
