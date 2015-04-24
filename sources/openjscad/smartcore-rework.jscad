@@ -1,4 +1,4 @@
-/* -*- mode: js; electric-indent-mode: 1; indent-tabs-mode: nil -*- */
+/* -*- mode: js; electric-indent-mode: t; indent-tabs-mode: nil -*- */
 /**********
 
            Smartcore : L'empileuse
@@ -295,7 +295,7 @@ var Lm_uu = function (dim) {
         return difference (
             cylinder ({r: this.ro, h: this.l}),
             cylinder ({r: this.ri, h: this.l + 2}).translate ([0, 0, -1])
-        ).setColor (0.5, 0.55, 0.55);
+        ).setColor (0.5, 0.55, 0.55, 0.6);
     };
 };
 
@@ -333,7 +333,7 @@ function getParameterDefinitions() {
             caption: 'What to show :', 
             type: 'choice', 
             values: [0,1,101,102,2,3,4,-1,5,6,7,8,9,10,11,12], 
-            initial: 0,
+            initial: 102,
             captions: ["-----",                // 0
                        "All printer assembly", // 1
                        "Assembly, no walls",   // 101
@@ -361,7 +361,7 @@ function getParameterDefinitions() {
             caption: 'Position (x,y,z):',
             name: '_position',
             type: 'text',
-            initial: '20,20,0'
+            initial: '20,0,0'
         },
         { name: '_wallThickness', caption: 'Box wood thickness:', type: 'int', initial: 10 },
         { name: '_XYrodsDiam', caption: 'X Y Rods diameter (6 or 8 ):', type: 'int', initial: 8},
@@ -736,7 +736,10 @@ var Carriage_y = function () {
     
     this.lmuu_support_r = Size.y.lmuu.ro + Size.rod_xy_wall;
     this.lmuu_fix_plate_thickness = 6;
-    this.lmuu_extra = Size.y.lmuu.l * 4  / 3 - this.body_width;
+    this.lmuu_support_extra = Size.y.lmuu.l * 4  / 3 - this.body_width;
+    this.lmuu_support_width = this.lmuu_support_extra + this.body_width;
+    // Distance of extra LM_UU parts.
+    this.lmuu_extra = (Size.y.lmuu.l * 2 - this.lmuu_support_width) / 2;
 };
 
 Carriage_y.prototype.mesh = function (opt) {
@@ -758,11 +761,11 @@ Carriage_y.prototype.mesh = function (opt) {
         union (
             // Support body.
             cylinder ({r: this.lmuu_support_r,
-                       h: this.body_width + this.lmuu_extra})
+                       h: this.lmuu_support_width})
                 .rotateX (-90),
             // LM_UU fix plate.
             cube ([Size.lmuu_fix_plate + this.lmuu_support_r,
-                   this.body_width + this.lmuu_extra,
+                   this.lmuu_support_width,
                    this.lmuu_fix_plate_thickness])
                 .mirroredX()
                 .translate([0, 0, -3])
@@ -779,7 +782,7 @@ Carriage_y.prototype.mesh = function (opt) {
                        center: true,
                        fn: 8})
                 .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r,
-                             this.body_width + this.lmuu_extra - 8,
+                             this.lmuu_support_width - 8,
                              0])
         ])
         .setColor (0.5, 0.8, 0.4);    // XXX DEB
@@ -866,7 +869,7 @@ Carriage_y.prototype.mesh = function (opt) {
     mesh = union (
         lmuu_support,
         body.translate ([dist.x.rod_y_idler_axis,
-                         this.body_width / 2 + this.lmuu_extra,
+                         this.body_width / 2 + this.lmuu_support_extra,
                          -Size.y.rod.r])
     )
         .subtract ([
@@ -890,14 +893,31 @@ Carriage_y.prototype.mesh = function (opt) {
                        r2: Size.y.lmuu.ro - 1,
                        h: 2})
                 .rotateX (90)
-                .translate ([0, 0.5 + this.body_width + this.lmuu_extra, 0])
+                .translate ([0, 0.5 + this.lmuu_support_width, 0])
         ])
         .union ([
         ])
         .subtract ([
             // Look inside
-//            cube ([50,50,50]).mirroredZ()
+            cube ([50,50,50]).mirroredZ(),
+            cube ([50,50,50])
+                .translate ([dist.x.rod_y_idler_axis,
+                             this.lmuu_support_width - this.body_width / 2,
+                             -1])
         ]);
+
+    // Output linear bearings (debugging/view).
+    if (opt.indexOf ("lmuu") > -1)
+        mesh = mesh.union ([
+            Size.y.lmuu.mesh ()
+                .rotateX (-90)
+                .translate ([0, -this.lmuu_extra - 0.1,0]),
+            Size.y.lmuu.mesh ()
+                .rotateX (-90)
+                .translate ([0, Size.y.lmuu.l - this.lmuu_extra + 0.1])
+        ]);
+
+
     return mesh;
 };
 
@@ -1512,6 +1532,23 @@ function rods_y () {
         .setColor(0.6,0.6,0.6);
 }
 
+function rods_x (y) {
+    var x = _globalWidth / 2 - Size.rod_y_wall_dist -
+        carriage_y.body_l + Size.rod_x_car_overlap;
+    return union (
+        // rod x lower
+        cylinder ({r: Size.x.rod.r, h: Size.x.rod.l})
+            .rotateY (90)
+            .translate ([-x, y, dist.z.rod_x1]),
+        // rod x upper
+        cylinder({r: Size.x.rod.r, h: Size.x.rod.l})
+            .rotateY (90)
+            .translate ([-x, y, dist.z.rod_x2])
+    )
+        .setColor(0.6,0.6,0.6);
+}
+
+
 function _rodsZ() {  
     if (_ZrodsOption === 0) {
 
@@ -1978,7 +2015,6 @@ function main(params) {
     _globalHeight = _printableHeight + 140; // bottom = 40mm head = 40 mm + extra loose.
 
     XrodLength = _printableWidth + 55; // 40: slideY width , 3: offset slideY from wall.
-    YrodLength = _printableDepth + 65; // 5: rod support inside parts.
     if (_ZrodsOption === 0) {
         ZrodLength = _printableHeight + 110;
     }
@@ -1996,6 +2032,10 @@ function main(params) {
     // Make final dimensions calculation
     Size.calc ();
     carriage_y = new Carriage_y ();
+
+    // TODO put this inside `Size.calc ()'
+    YrodLength = _printableDepth + Size.y.lmuu.l * 2 + Size.rod_y_nema_overlap * 2 + 1;
+    XrodLength = _printableWidth + carriage_y.body_l + Size.rod_x_car_overlap;
     
     var res=null;
 
@@ -2004,7 +2044,7 @@ function main(params) {
     case 0:
         res = [
             _axis ().translate ([-40, -40, 0]),
-            slideY ("bearing left"),
+            slideY ("bearing left lmuu"),
         ];
         break;
 
@@ -2095,12 +2135,14 @@ function main(params) {
             x: _position.x,
             y: {
                 // Y coordinate of carriage y
-                car_y: -_globalDepth / 2 + nema.side_size + _position.y,
+                car_y: -_globalDepth / 2 + nema.side_size + _position.y +
+                    carriage_y.lmuu_extra,
             },
             z: _position.z
         };
         // Y coordinate of X rods.
-        pos.y.rod_x  = pos.y.car_y + carriage_y.lmuu_extra + carriage_y.body_width / 2;
+        pos.y.rod_x  = pos.y.car_y + carriage_y.lmuu_support_extra +
+            carriage_y.body_width / 2;
 
         // Belt segments
         var belt1_len = [0];
@@ -2130,6 +2172,7 @@ function main(params) {
         
         res = [
             rods_y (),
+            rods_x (pos.y.rod_x),
             //nema left
             left_motor_and_mount
                 .translate ([-_globalWidth/2, -_globalDepth / 2, 0]),
@@ -2141,11 +2184,11 @@ function main(params) {
                 .translate([-_globalWidth / 2 + nema.side_size / 2 + Size.gt2_pulley.belt_ro,
                             -_globalDepth / 2 + nema.side_size / 2,
                             dist.z.belt1]),
-            slideY ("bearings")
+            slideY ("bearings lmuu")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
                              pos.y.car_y,
                              Size.z.rod.r]),
-            slideY ("bearings")
+            slideY ("bearings lmuu")
                 .translate ([-_globalWidth / 2 + Size.rod_y_wall_dist,
                              pos.y.car_y,
                              Size.z.rod.r])
