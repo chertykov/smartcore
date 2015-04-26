@@ -226,6 +226,9 @@ function Gt2_Pulley () {
                 cylinder ({r: this.ri, h: this.h + 2})
                     .translate ([0, 0, -1])
             );
+
+        // Look inside
+        mesh = mesh.subtract (cube ([40, 40, 40]).rotateZ (180));
         
         if (base == "belt")
             mesh = mesh.translate ([0, 0, -this.h_base]);
@@ -715,208 +718,6 @@ function extraSupportBed(){
     );
 }
 
-// Y caarriage object.
-var Carriage_y = function () {
-    this.rod_x_wall = 2;
-    this.body_width = 20;        // It's D_outer_608 - 2mm
-    this.idler_slot_r = idler.r_w * 2 + 2;
-    this.body_l =
-        Size.rod_x_car_overlap + this.rod_x_wall + 1 +
-        idler.r_w + dist.x.rod_y_idler_axis;
-    this.body_height =
-        dist.z.idler2_slot + Size.idler_support_h * 2 + idler.h + 6;
-    
-    this.lmuu_support_r = Size.y.lmuu.ro + Size.rod_xy_wall;
-    this.lmuu_fix_plate_thickness = 6;
-    this.lmuu_support_extra = Size.y.lmuu.l * 4  / 3 - this.body_width;
-    this.lmuu_support_width = this.lmuu_support_extra + this.body_width;
-    // Distance of extra LM_UU parts.
-    this.lmuu_extra = (Size.y.lmuu.l * 2 - this.lmuu_support_width) / 2;
-};
-
-Carriage_y.prototype.mesh = function (opt) {
-    var mesh;
-
-    if (typeof opt != "string")
-        opt = "";
-
-    // round bearings support in middle
-    var idler_support =
-        cylinder({
-            r1: idler.r_s + Size.idler_support_h * 2 + 0.1,
-            r2: idler.r_s,
-            h: Size.idler_support_h + 0.1
-        }).translate ([0, 0, - 0.1])
-        .setColor (0.7, 0.4, 0.4);    // XXX DEB
-
-    var lmuu_support =
-        union (
-            // Support body.
-            cylinder ({r: this.lmuu_support_r, h: this.lmuu_support_width})
-                .rotateX (-90),
-            // LM_UU fix plate.
-            cube ({size: [Size.lmuu_fix_plate + this.lmuu_support_r,
-                          this.lmuu_support_width,
-                          this.lmuu_fix_plate_thickness],
-                   center: [false,false,true]})
-                .mirroredX()
-        )
-        .subtract ([
-            // Screw holes for LM_UU fix
-            cylinder ({r: Size.m3.screw_r,
-                       h: this.lmuu_fix_plate_thickness,
-                       center: true,
-                       fn: 8})
-                .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r, 8, 0]),
-            cylinder ({r: Size.m3.screw_r,
-                       h: this.lmuu_fix_plate_thickness,
-                       center: true,
-                       fn: 8})
-                .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r,
-                             this.lmuu_support_width - 8,
-                             0])
-        ]);
-
-    // Main body.
-    // Base point: [idler shaft, idler shaft, 0]
-    var body =
-        union (
-            // Lower rect
-            cube ({size: [this.body_l, this.body_width, dist.z.idler1_slot],
-                   center: [0, 1, 0]})
-                .translate ([-dist.x.rod_y_idler_axis, 0, 0]),
-            // Upper rect
-            cube ({size: [this.body_l - dist.x.rod_y_idler_axis,
-                          this.body_width,
-                          this.body_height],
-                   center: [0, 1, 0]}),
-            // Round upper rect
-            cylinder ({d: this.body_width, h: this.body_height})
-        )
-        .subtract ([
-            // Bearing slots.
-            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
-                   center: [1, 1, 0]})
-                .translate ([0, 0, dist.z.idler1_slot]),
-            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
-                   center: [1, 1, 0]})
-                .translate ([0, 0, dist.z.idler2_slot])
-        ])
-        .union ([
-            // Idler bearings support (builtin washers).
-            idler_support.translate ([0, 0, dist.z.idler1_slot]),
-            idler_support.mirroredZ ()
-                .translate ([0, 0, dist.z.idler1_slot + dist.z.idler_slot_size]),
-            idler_support.translate ([0, 0, dist.z.idler2_slot]),
-            idler_support.mirroredZ ()
-                .translate ([0, 0, dist.z.idler2_slot + dist.z.idler_slot_size])
-        ])
-        .subtract ([
-            // Bearing shaft hole.
-            // Free part.
-            cylinder ({r: 4.1, h: this.body_height, fn: _globalResolution})
-                .translate([0, 0, dist.z.idler1_slot]),
-            // Tight part (self tap)
-            cylinder ({r: 3.8, h: dist.z.idler1_slot, fn: _globalResolution}),
-            // rod_x1 hole bottom
-            cylinder ({r: Size.x.rod.r + Size.clr.tight,
-                       h: Size.rod_x_car_overlap + 1,
-                       fn: _globalResolution})
-                .rotateY (90)
-                .translate ([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap,
-                             0,
-                             dist.z.rod_x1]),
-            // rod_x2 hole
-            cylinder ({r: Size.x.rod.r + Size.clr.tight,
-                       h: Size.rod_x_car_overlap + 1,
-                       fn: _globalResolution})
-                .rotateY (90)
-                .translate ([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap,
-                             0,
-                             dist.z.rod_x2]),
-            // rod_x1 fix screw hole
-            cylinder ({r: Size.m3.screw_r, h: this.body_width, fn: 8})
-                .rotateX(90)
-                .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
-                            0,
-                            dist.z.rod_x1 + Size.x.rod.r * 2 / 3]),
-            // rod_x2 fix screw hole
-            cylinder ({r: Size.m3.screw_r, h: this.body_width, fn: 8})
-                .rotateX(90)
-                .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
-                            0,
-                            dist.z.rod_x2 + Size.x.rod.r * 2 / 3])
-        ]);
-
-
-    if (opt.indexOf ("bearing") > -1)
-        body = body.union ([
-            idler.mesh ().translate ([0, 0, dist.z.idler1]),
-            idler.mesh ().translate ([0, 0, dist.z.idler2])
-        ]);
-
-    // Construct whole carriage.
-    mesh = union (
-        lmuu_support,
-        body.translate ([dist.x.rod_y_idler_axis,
-                         this.body_width / 2 + this.lmuu_support_extra,
-                         -Size.y.rod.r])
-    )
-        .subtract ([
-            // LM_UU support internal hole.
-            cylinder ({r: Size.y.lmuu.ro + Size.clr.minimal,
-                       h: Size.y.lmuu.l * 2,
-                       fn: _globalResolution})
-                .rotateX (-90)
-                .translate ([0, -1, 0]),
-            // Fix plate slit.
-            cube ({size: [Size.y.lmuu.ro * 3, Size.y.lmuu.l * 2, 1],
-                   center: [0, 0, 1]})
-                .mirroredX ()
-                .translate ([0, -1, 0]),
-            // Bevels
-            cylinder ({r1: Size.y.lmuu.ro + 1,
-                       r2: Size.y.lmuu.ro - 1,
-                       h: 2})
-                .rotateX (-90)
-                .translate ([0, -0.5, 0]),
-            cylinder ({r1: Size.y.lmuu.ro + 1,
-                       r2: Size.y.lmuu.ro - 1,
-                       h: 2})
-                .rotateX (90)
-                .translate ([0, 0.5 + this.lmuu_support_width, 0])
-        ])
-        .union ([
-        ])
-        .subtract ([
-        ]);
-
-    if (opt.indexOf ("debug") > -1) {
-        // Look inside
-        mesh = difference (
-            mesh,
-            cube ([50,50,50]).mirroredZ(),
-            cube ([50,50,50])
-                .translate ([dist.x.rod_y_idler_axis,
-                             this.lmuu_support_width - this.body_width / 2,
-                             -1])
-        );
-    }
-
-    // Output linear bearings (debugging/view).
-    if (opt.indexOf ("lmuu") > -1)
-        mesh = mesh.union ([
-            Size.y.lmuu.mesh ()
-                .rotateX (-90)
-                .translate ([0, -this.lmuu_extra - 0.1,0]),
-            Size.y.lmuu.mesh ()
-                .rotateX (-90)
-                .translate ([0, Size.y.lmuu.l - this.lmuu_extra + 0.1])
-        ]);
-
-
-    return mesh;
-};
 
 function slideY (opt) {
     return carriage_y.mesh (opt);
@@ -1170,12 +971,229 @@ function motorXY () {
 }
 
 
+// Y carriage object.
+var Carriage_y = function () {
+    this.rod_x_wall = 2;
+    this.body_width = 20;        // It's D_outer_608 - 2mm
+    this.idler_slot_r = idler.r_w * 2 + 2;
+    this.body_l =
+        Size.rod_x_car_overlap + this.rod_x_wall + 1 +
+        idler.r_w + dist.x.rod_y_idler_axis;
+    this.body_height =
+        dist.z.idler2_slot + Size.idler_support_h * 2 + idler.h + 6;
+    
+    this.lmuu_support_r = Size.y.lmuu.ro + Size.rod_xy_wall;
+    this.lmuu_fix_plate_thickness = 6;
+    this.lmuu_support_extra = Size.y.lmuu.l * 4  / 3 - this.body_width;
+    this.lmuu_support_width = this.lmuu_support_extra + this.body_width;
+    // Distance of extra LM_UU parts.
+    this.lmuu_extra = (Size.y.lmuu.l * 2 - this.lmuu_support_width) / 2;
+};
+
+Carriage_y.prototype.mesh = function (opt) {
+    var mesh;
+
+    if (typeof opt != "string")
+        opt = "";
+
+    // round bearings support in middle
+    var idler_support =
+        cylinder({
+            r1: idler.r_s + Size.idler_support_h * 2 + 0.1,
+            r2: idler.r_s,
+            h: Size.idler_support_h + 0.1
+        }).translate ([0, 0, - 0.1])
+        .setColor (0.7, 0.4, 0.4);    // XXX DEB
+
+    var lmuu_support =
+        union (
+            // Support body.
+            cylinder ({r: this.lmuu_support_r, h: this.lmuu_support_width})
+                .rotateX (-90),
+            // LM_UU fix plate.
+            cube ({size: [Size.lmuu_fix_plate + this.lmuu_support_r,
+                          this.lmuu_support_width,
+                          this.lmuu_fix_plate_thickness],
+                   center: [false,false,true]})
+                .mirroredX()
+        )
+        .subtract ([
+            // Screw holes for LM_UU fix
+            cylinder ({r: Size.m3.screw_r,
+                       h: this.lmuu_fix_plate_thickness,
+                       center: true,
+                       fn: 8})
+                .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r, 8, 0]),
+            cylinder ({r: Size.m3.screw_r,
+                       h: this.lmuu_fix_plate_thickness,
+                       center: true,
+                       fn: 8})
+                .translate ([-Size.lmuu_fix_plate / 2 - this.lmuu_support_r,
+                             this.lmuu_support_width - 8,
+                             0])
+        ]);
+
+    // Main body.
+    // Base point: [idler shaft, idler shaft, 0]
+    var body =
+        union (
+            // Lower rect
+            cube ({size: [this.body_l, this.body_width, dist.z.idler1_slot],
+                   center: [0, 1, 0]})
+                .translate ([-dist.x.rod_y_idler_axis, 0, 0]),
+            // Upper rect
+            cube ({size: [this.body_l - dist.x.rod_y_idler_axis,
+                          this.body_width,
+                          this.body_height],
+                   center: [0, 1, 0]}),
+            // Round upper rect
+            cylinder ({d: this.body_width, h: this.body_height})
+        )
+        .subtract ([
+            // Bearing slots.
+            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
+                   center: [1, 1, 0]})
+                .translate ([0, 0, dist.z.idler1_slot]),
+            cube ({size: [this.idler_slot_r, this.body_width + 2, dist.z.idler_slot_size],
+                   center: [1, 1, 0]})
+                .translate ([0, 0, dist.z.idler2_slot])
+        ])
+        .union ([
+            // Idler bearings support (builtin washers).
+            idler_support.translate ([0, 0, dist.z.idler1_slot]),
+            idler_support.mirroredZ ()
+                .translate ([0, 0, dist.z.idler1_slot + dist.z.idler_slot_size]),
+            idler_support.translate ([0, 0, dist.z.idler2_slot]),
+            idler_support.mirroredZ ()
+                .translate ([0, 0, dist.z.idler2_slot + dist.z.idler_slot_size])
+        ])
+        .subtract ([
+            // Bearing shaft hole.
+            // Free part.
+            cylinder ({r: 4.1, h: this.body_height, fn: _globalResolution})
+                .translate([0, 0, dist.z.idler1_slot]),
+            // Tight part (self tap)
+            cylinder ({r: 3.8, h: dist.z.idler1_slot, fn: _globalResolution}),
+            // rod_x1 hole bottom
+            cylinder ({r: Size.x.rod.r + Size.clr.tight,
+                       h: Size.rod_x_car_overlap + 1,
+                       fn: _globalResolution})
+                .rotateY (90)
+                .translate ([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap,
+                             0,
+                             dist.z.rod_x1]),
+            // rod_x2 hole
+            cylinder ({r: Size.x.rod.r + Size.clr.tight,
+                       h: Size.rod_x_car_overlap + 1,
+                       fn: _globalResolution})
+                .rotateY (90)
+                .translate ([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap,
+                             0,
+                             dist.z.rod_x2]),
+            // rod_x1 fix screw hole
+            cylinder ({r: Size.m3.screw_r, h: this.body_width, fn: 8})
+                .rotateX(90)
+                .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
+                            0,
+                            dist.z.rod_x1 + Size.x.rod.r * 2 / 3]),
+            // rod_x2 fix screw hole
+            cylinder ({r: Size.m3.screw_r, h: this.body_width, fn: 8})
+                .rotateX(90)
+                .translate([this.body_l - dist.x.rod_y_idler_axis - Size.rod_x_car_overlap / 2,
+                            0,
+                            dist.z.rod_x2 + Size.x.rod.r * 2 / 3])
+        ]);
+
+
+    if (opt.indexOf ("bearing") > -1)
+        body = body.union ([
+            idler.mesh ().translate ([0, 0, dist.z.idler1]),
+            idler.mesh ().translate ([0, 0, dist.z.idler2])
+        ]);
+
+    // Construct whole carriage.
+    mesh = union (
+        lmuu_support,
+        body.translate ([dist.x.rod_y_idler_axis,
+                         this.body_width / 2 + this.lmuu_support_extra,
+                         -Size.y.rod.r])
+    )
+        .subtract ([
+            // LM_UU support internal hole.
+            cylinder ({r: Size.y.lmuu.ro + Size.clr.minimal,
+                       h: Size.y.lmuu.l * 2,
+                       fn: _globalResolution})
+                .rotateX (-90)
+                .translate ([0, -1, 0]),
+            // Fix plate slit.
+            cube ({size: [Size.y.lmuu.ro * 3, Size.y.lmuu.l * 2, 1],
+                   center: [0, 0, 1]})
+                .mirroredX ()
+                .translate ([0, -1, 0]),
+            // Bevels
+            cylinder ({r1: Size.y.lmuu.ro + 1,
+                       r2: Size.y.lmuu.ro - 1,
+                       h: 2})
+                .rotateX (-90)
+                .translate ([0, -0.5, 0]),
+            cylinder ({r1: Size.y.lmuu.ro + 1,
+                       r2: Size.y.lmuu.ro - 1,
+                       h: 2})
+                .rotateX (90)
+                .translate ([0, 0.5 + this.lmuu_support_width, 0])
+        ])
+        .union ([
+        ])
+        .subtract ([
+        ]);
+
+    if (opt.indexOf ("debug") > -1) {
+        // Look inside
+        mesh = difference (
+            mesh,
+            cube ([50,50,50]).mirroredZ(),
+            cube ([50,50,50])
+                .translate ([dist.x.rod_y_idler_axis,
+                             this.lmuu_support_width - this.body_width / 2,
+                             -1])
+        );
+    }
+
+    // Output linear bearings (debugging/view).
+    if (opt.indexOf ("lmuu") > -1)
+        mesh = mesh.union ([
+            Size.y.lmuu.mesh ()
+                .rotateX (-90)
+                .translate ([0, -this.lmuu_extra - 0.1,0]),
+            Size.y.lmuu.mesh ()
+                .rotateX (-90)
+                .translate ([0, Size.y.lmuu.l - this.lmuu_extra + 0.1])
+        ]);
+
+
+    return mesh;
+};
+
+
 var idler_mount = {
+    mesh: function (opt) {
+        var size_y = motor_mount.thickness + _wallThickness + motor_mount.thickness +
+            1 + belt.w + idler.r_f;
+        var body_z = carriage_y.body_height;
+        var size_x = nema.side_size;
+        
+        var body = cube ([this.size_x, this.size_y, this.body_z]);
+        body = body.subtract (
+            cube ([])
+        );
+    }
 };
 
 // 
 function bearingsXY(){
     var mesh;
+
+    
     
     var X = _wallThickness + motor_mount.thickness * 2 + 1 + idler.r_f;
     var Y = 20;
@@ -2045,7 +2063,8 @@ function main(params) {
     case 0:
         res = [
             _axis ().translate ([-40, -40, 0]),
-            motor_mount.mesh ()
+            carriage_y.mesh ().translate ([80, 0, 0]),
+            bearingsXY ()
 //            slideY ("bearing left lmuu"),
         ];
         break;
